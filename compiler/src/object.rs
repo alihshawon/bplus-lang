@@ -1,5 +1,7 @@
 // compiler/src/object.rs
 
+use crate::ast::{Expression, Statement};
+use crate::environment::Environment;
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -11,10 +13,12 @@ pub enum Object {
     ReturnValue(Box<Object>),
     Error(String),
     Function {
-        parameters: Vec<String>,
-        body: String, // For simplicity, body as string (later replace with AST node)
-        env: Box<crate::environment::Environment>,
+        parameters: Vec<Expression>, // Identifier expressions
+        body: Vec<Statement>,
+        env: Environment,
     },
+    // Added to represent functions implemented in Rust
+    Builtin(fn(Vec<Object>) -> Object),
 }
 
 impl fmt::Display for Object {
@@ -22,13 +26,15 @@ impl fmt::Display for Object {
         match self {
             Object::Integer(i) => write!(f, "{}", i),
             Object::Boolean(b) => write!(f, "{}", b),
-            Object::String(s) => write!(f, "\"{}\"", s),
+            Object::String(s) => write!(f, "{}", s), // Note: not printing quotes here
             Object::Null => write!(f, "null"),
             Object::ReturnValue(obj) => write!(f, "{}", obj),
             Object::Error(msg) => write!(f, "Error: {}", msg),
-            Object::Function { parameters, body, .. } => {
-                write!(f, "fn({}) {{ {} }}", parameters.join(", "), body)
+            Object::Function { parameters, .. } => {
+                let params: Vec<String> = parameters.iter().map(|p| format!("{}", p)).collect();
+                write!(f, "fn({}) {{ ... }}", params.join(", "))
             }
+            Object::Builtin(_) => write!(f, "[builtin function]"),
         }
     }
 }
