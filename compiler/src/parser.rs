@@ -294,7 +294,7 @@ impl Parser {
         Some(Expression::Call { function: Box::new(function), arguments })
     }
     
-    // ✅ CORRECTED FUNCTION
+    // CORRECTED FUNCIION
     fn parse_call_arguments(&mut self) -> Option<Vec<Expression>> {
         let mut args = Vec::new();
 
@@ -322,7 +322,7 @@ impl Parser {
         }
 
         // After all arguments, we must find a closing ')'
-        if !self.expect_peek(TokenType::Rparen) {
+        if !self.expect_peek(TokenType::RParen) {
             return None;
         }
 
