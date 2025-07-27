@@ -1,1 +1,0 @@
-HashMap<TokenType, for<'a> fn(&'a mut Parser, Expression) -> Option<Expression>>
