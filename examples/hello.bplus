@@ -1,2 +1,16 @@
-dekhao("Hello, B+ world!");
+// examples/hello.bplus
 
+dekhao("Hello from B+!");
+
+let x = 10;
+let y = 20;
+let z = x + y;
+
+dekhao("The sum of x and y is:");
+dekhao(z);
+
+jodi (z > 25) {
+  dekhao("The sum is greater than 25.");
+} nahoy {
+  dekhao("The sum is not greater than 25.");
+}

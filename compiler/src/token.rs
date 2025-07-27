@@ -42,7 +42,7 @@ pub enum TokenType {
     Jodi,
     Nahoy,
     Ferot,
-    Dekhao,
+ 
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -72,7 +72,7 @@ pub fn lookup_ident(ident: &str) -> TokenType {
     keywords.insert("jodi".to_string(), TokenType::Jodi);
     keywords.insert("nahoy".to_string(), TokenType::Nahoy);
     keywords.insert("ferot".to_string(), TokenType::Ferot);
-    keywords.insert("dekhao".to_string(), TokenType::Dekhao);
+
 
     if let Some(tok_type) = keywords.get(ident) {
         tok_type.clone()

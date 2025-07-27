@@ -224,7 +224,7 @@ impl Parser {
             alternative,
         })
     }
-    
+
     fn parse_block_statement(&mut self) -> Option<Vec<Statement>> {
         let mut statements = Vec::new();
         self.next_token(); // consume {
@@ -293,29 +293,42 @@ impl Parser {
         let arguments = self.parse_call_arguments()?;
         Some(Expression::Call { function: Box::new(function), arguments })
     }
-
+    
+    // ✅ CORRECTED FUNCTION
     fn parse_call_arguments(&mut self) -> Option<Vec<Expression>> {
         let mut args = Vec::new();
+
+        // Handles the case of zero arguments, like dekhao()
         if self.peek_token_is(TokenType::RParen) {
-            self.next_token();
+            self.next_token(); // Consume the ')'
             return Some(args);
         }
 
+        // Consume the '(' and get ready to parse the first argument
         self.next_token();
-        args.push(self.parse_expression(Precedence::LOWEST)?);
 
-        while self.peek_token_is(TokenType::Comma) {
-            self.next_token();
-            self.next_token();
-            args.push(self.parse_expression(Precedence::LOWEST)?);
+        // Parse the first argument
+        if let Some(exp) = self.parse_expression(Precedence::LOWEST) {
+            args.push(exp);
         }
 
-        if !self.expect_peek(TokenType::RParen) {
+        // As long as we see a comma, there are more arguments to parse
+        while self.peek_token_is(TokenType::Comma) {
+            self.next_token(); // Consume the comma
+            self.next_token(); // Move to the next argument's token
+            if let Some(exp) = self.parse_expression(Precedence::LOWEST) {
+                args.push(exp);
+            }
+        }
+
+        // After all arguments, we must find a closing ')'
+        if !self.expect_peek(TokenType::Rparen) {
             return None;
         }
 
         Some(args)
     }
+
 
     // --- Helper Methods ---
 
