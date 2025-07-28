@@ -11,13 +11,13 @@ pub fn eval(node: Program, env: &mut Environment) -> Object {
         result = eval_statement(statement, env);
 
         match result {
-            Object::ReturnValue(value) => return *value,
+            Object::ReturnValue(value) => return format_boolean(*value),
             Object::Error(_) => return result,
             _ => (),
         }
     }
 
-    result
+    format_boolean(result)
 }
 
 fn eval_statement(statement: Statement, env: &mut Environment) -> Object {
@@ -49,8 +49,6 @@ fn eval_block_statement(statements: Vec<Statement>, env: &mut Environment) -> Ob
     for statement in statements {
         result = eval_statement(statement, env);
 
-        // If we get a return value or an error, we need to stop execution
-        // and bubble it up immediately.
         match result {
             Object::ReturnValue(_) | Object::Error(_) => return result,
             _ => (),
@@ -131,6 +129,8 @@ fn eval_bang_operator_expression(right: Object) -> Object {
     match right {
         Object::Boolean(true) => Object::Boolean(false),
         Object::Boolean(false) => Object::Boolean(true),
+        Object::String(s) if s == "Ha" => Object::Boolean(false),
+        Object::String(s) if s == "Na" => Object::Boolean(true),
         Object::Null => Object::Boolean(true),
         _ => Object::Boolean(false),
     }
@@ -144,6 +144,16 @@ fn eval_minus_prefix_operator_expression(right: Object) -> Object {
 }
 
 fn eval_infix_expression(operator: &str, left: Object, right: Object) -> Object {
+    // Object::String("Ha"/"Na") as boolean
+    fn to_bool(obj: &Object) -> Option<bool> {
+        match obj {
+            Object::Boolean(b) => Some(*b),
+            Object::String(s) if s == "Ha" => Some(true),
+            Object::String(s) if s == "Na" => Some(false),
+            _ => None,
+        }
+    }
+
     match (&left, &right) {
         (Object::Integer(l), Object::Integer(r)) => match operator {
             "+" => Object::Integer(l + r),
@@ -156,12 +166,18 @@ fn eval_infix_expression(operator: &str, left: Object, right: Object) -> Object 
             "!=" => Object::Boolean(l != r),
             _ => Object::Error(format!("unknown operator: {:?} {} {:?}", left, operator, right)),
         },
-        (Object::Boolean(l), Object::Boolean(r)) => match operator {
-            "==" => Object::Boolean(l == r),
-            "!=" => Object::Boolean(l != r),
-            _ => Object::Error(format!("unknown operator: {:?} {} {:?}", left, operator, right)),
-        },
-        _ => Object::Error(format!("type mismatch: {:?} {} {:?}", left, operator, right)),
+        // if boolean come from Ha/Na string, then compare as boolean
+        _ => {
+            if let (Some(lb), Some(rb)) = (to_bool(&left), to_bool(&right)) {
+                match operator {
+                    "==" => Object::Boolean(lb == rb),
+                    "!=" => Object::Boolean(lb != rb),
+                    _ => Object::Error(format!("unknown operator: {:?} {} {:?}", left, operator, right)),
+                }
+            } else {
+                Object::Error(format!("type mismatch: {:?} {} {:?}", left, operator, right))
+            }
+        }
     }
 }
 
@@ -191,7 +207,6 @@ fn apply_function(func: Object, args: Vec<Object>) -> Object {
 
             let evaluated = eval_block_statement(body, &mut extended_env);
 
-            // Unwrap the return value if it exists
             if let Object::ReturnValue(value) = evaluated {
                 *value
             } else {
@@ -206,10 +221,20 @@ fn is_truthy(obj: &Object) -> bool {
     match obj {
         Object::Boolean(b) => *b,
         Object::Null => false,
-        _ => true, // All other types (like numbers and strings) are truthy
+        Object::String(s) if s == "Ha" => true,
+        Object::String(s) if s == "Na" => false,
+        _ => true,
     }
 }
 
 fn is_error(obj: &Object) -> bool {
     matches!(obj, Object::Error(_))
+}
+
+fn format_boolean(obj: Object) -> Object {
+    match obj {
+        Object::Boolean(true) => Object::String("Ha".to_string()),
+        Object::Boolean(false) => Object::String("Na".to_string()),
+        _ => obj,
+    }
 }

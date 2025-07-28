@@ -86,7 +86,7 @@ impl Parser {
 
     fn parse_statement(&mut self) -> Option<Statement> {
         match self.cur_token.token_type {
-            TokenType::Let => self.parse_let_statement(),
+            TokenType::Dhoro => self.parse_let_statement(),
             TokenType::Ferot => self.parse_return_statement(),
             _ => self.parse_expression_statement(),
         }

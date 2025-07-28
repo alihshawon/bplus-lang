@@ -1,9 +1,8 @@
 // compiler/src/token.rs
 
 use std::collections::HashMap;
+use once_cell::sync::Lazy;
 
-// Added Eq and Hash to derive macro.
-// Changed all variants to UpperCamelCase to follow Rust conventions and fix warnings.
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum TokenType {
     Illegal,
@@ -36,13 +35,12 @@ pub enum TokenType {
 
     // Keywords
     Function,
-    Let,
+    Dhoro,
     Ha,
     Na,
     Jodi,
     Nahoy,
     Ferot,
- 
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -60,21 +58,60 @@ impl Token {
     }
 }
 
-/// Looks up an identifier string to see if it's a keyword.
+/// Normalize input by making it lowercase and removing spaces
+fn normalize_keyword(ident: &str) -> String {
+    ident.to_lowercase().replace(' ', "")
+}
+
+// Static keyword map using once_cell
+static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
+    let mut map = HashMap::new();
+
+    // Let variants
+    map.insert("dhoro", TokenType::Dhoro);
+    map.insert("dhori", TokenType::Dhoro);
+    map.insert("monekori", TokenType::Dhoro);
+    map.insert("monekoro", TokenType::Dhoro);
+    map.insert("monekore", TokenType::Dhoro);
+
+    // Function variants
+    map.insert("kaj", TokenType::Function);
+    map.insert("fn", TokenType::Function);
+    map.insert("function", TokenType::Function);
+
+    // Boolean true variants
+    map.insert("ha", TokenType::Ha);
+    map.insert("thik", TokenType::Ha);
+    map.insert("sotti", TokenType::Ha);
+    map.insert("true", TokenType::Ha);
+
+    // Boolean false variants
+    map.insert("na", TokenType::Na);
+    map.insert("mitthe", TokenType::Na);
+    map.insert("false", TokenType::Na);
+
+    // Conditional 'if' variants
+    map.insert("jodi", TokenType::Jodi);
+    map.insert("yodi", TokenType::Jodi);
+    map.insert("if", TokenType::Jodi);
+
+    // Conditional 'else' variants
+    map.insert("nahoy", TokenType::Nahoy);
+    map.insert("nahole", TokenType::Nahoy);
+    map.insert("else", TokenType::Nahoy);
+
+    // Return statement variants
+    map.insert("ferot", TokenType::Ferot);
+    map.insert("return", TokenType::Ferot);
+
+    map
+});
+
+/// Looks up an identifier string to see if it's a keyword or a synonym.
 pub fn lookup_ident(ident: &str) -> TokenType {
-    let mut keywords: HashMap<String, TokenType> = HashMap::new();
-    // Using UpperCamelCase variants and removed old English keywords.
-    keywords.insert("fn".to_string(), TokenType::Function);
-    keywords.insert("let".to_string(), TokenType::Let);
-    keywords.insert("ha".to_string(), TokenType::Ha);
-    keywords.insert("thik".to_string(), TokenType::Ha);
-    keywords.insert("na".to_string(), TokenType::Na);
-    keywords.insert("jodi".to_string(), TokenType::Jodi);
-    keywords.insert("nahoy".to_string(), TokenType::Nahoy);
-    keywords.insert("ferot".to_string(), TokenType::Ferot);
+    let normalized = normalize_keyword(ident);
 
-
-    if let Some(tok_type) = keywords.get(ident) {
+    if let Some(tok_type) = KEYWORDS.get(normalized.as_str()) {
         tok_type.clone()
     } else {
         TokenType::Ident
