@@ -110,15 +110,22 @@ impl Lexer {
     }
 
     fn read_string(&mut self) -> String {
-        let position = self.position + 1;
-        loop {
-            self.read_char();
-            if self.ch == b'"' || self.ch == 0 {
-                break;
-            }
+    let position = self.position + 1;
+
+    loop {
+        self.read_char();
+        if self.ch == b'"' || self.ch == 0 {
+            break;
         }
-        self.input[position..self.position].to_string()
     }
+
+    let result = self.input[position..self.position].to_string();
+
+    //Move past closing quote
+    self.read_char();
+
+    result
+}
 
     fn skip_whitespace(&mut self) {
         while self.ch.is_ascii_whitespace() {
