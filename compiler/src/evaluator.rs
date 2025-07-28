@@ -3,6 +3,8 @@
 use crate::ast::{Expression, Program, Statement};
 use crate::environment::Environment;
 use crate::object::Object;
+use std::io::{self, Write};
+
 
 pub fn eval(node: Program, env: &mut Environment) -> Object {
     let mut result = Object::Null;
@@ -236,5 +238,33 @@ fn format_boolean(obj: Object) -> Object {
         Object::Boolean(true) => Object::String("Ha".to_string()),
         Object::Boolean(false) => Object::String("Na".to_string()),
         _ => obj,
+    }
+}
+/// Built-in function to read input from the user
+
+fn builtin_input(_args: Vec<Object>) -> Object {
+    print!(""); // Prompt chaile ekhane prompt string use kora jabe
+    io::stdout().flush().unwrap();
+
+    let mut input = String::new();
+
+    match io::stdin().read_line(&mut input) {
+        Ok(_) => {
+            let trimmed = input.trim_end_matches(&['\n', '\r'][..]).to_string();
+            Object::String(trimmed)
+        }
+        Err(e) => Object::Error(format!("Input bodhgommo noy: {}", e)),
+    }
+}
+
+
+pub fn eval_identifier(name: &str, env: &mut Environment) -> Object {
+    match env.get(name) {
+        Some(obj) => obj.clone(),
+        None => match name {
+            //"dekhao" => Object::Builtin(builtin_print),
+            "input" => Object::Builtin(builtin_input),
+            _ => Object::Error(format!("Undefined identifier: {}", name)),
+        },
     }
 }

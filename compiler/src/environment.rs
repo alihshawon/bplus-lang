@@ -1,5 +1,6 @@
 // compiler/src/environment.rs
 
+use std::io::{self, Write}; // For printing in built-in functions
 use crate::object::Object;
 use std::collections::HashMap;
 
@@ -31,6 +32,34 @@ impl Environment {
             }),
         );
         
+        store.insert(
+    "input".to_string(),
+    Object::Builtin(|args| {
+        if args.len() != 1 {
+            return Object::Error(format!(
+                "wrong number of arguments. got={}, want=1",
+                args.len()
+            ));
+        }
+        print!("{}", args[0]);  // prompt string print korbe
+        io::stdout().flush().unwrap();
+
+        let mut input = String::new();
+        match io::stdin().read_line(&mut input) {
+            Ok(_) => Object::String(input.trim().to_string()),
+            Err(_) => Object::Error("failed to read input".to_string()),
+        }
+    }),
+);
+
+
+
+
+
+
+
+
+
         // You can add more built-in functions here later
         // For example, a len() function:
         // store.insert("len".to_string(), Object::Builtin(...));
