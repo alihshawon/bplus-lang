@@ -39,4 +39,10 @@ impl fmt::Display for Object {
         }
     }
 }
-
+/*
+impl Object {
+    pub fn is_error(&self) -> bool {
+        matches!(self, Object::Error(_))
+    }
+}
+*/

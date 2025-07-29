@@ -242,7 +242,43 @@ fn format_boolean(obj: Object) -> Object {
 }
 /// Built-in function to read input from the user
 
-fn builtin_input(_args: Vec<Object>) -> Object {
+
+
+pub fn builtin_input(args: Vec<Object>) -> Object {
+    if args.len() != 1 {
+        return Object::Error(format!(
+            "wrong number of arguments. got={}, want=1",
+            args.len()
+        ));
+    }
+
+    // Prompt string ta args[0] theke nite hobe, jeta Object::String hisebe asbe
+    if let Object::String(prompt) = &args[0] {
+        print!("{}", prompt);
+        io::stdout().flush().unwrap();
+    } else {
+        // Jodi prompt string na hoy, empty print koro
+        print!("");
+        io::stdout().flush().unwrap();
+    }
+
+    let mut input = String::new();
+    match io::stdin().read_line(&mut input) {
+        Ok(_) => {
+            let trimmed = input.trim_end_matches(&['\n', '\r'][..]).to_string();
+            Object::String(trimmed)
+        }
+        Err(e) => Object::Error(format!("Input bodhgommo noy: {}", e)),
+    }
+}
+
+
+
+
+
+/*
+
+pub fn builtin_input(_args: Vec<Object>) -> Object {
     print!(""); // Prompt chaile ekhane prompt string use kora jabe
     io::stdout().flush().unwrap();
 
@@ -257,7 +293,10 @@ fn builtin_input(_args: Vec<Object>) -> Object {
     }
 }
 
+*/
 
+
+/*
 pub fn eval_identifier(name: &str, env: &mut Environment) -> Object {
     match env.get(name) {
         Some(obj) => obj.clone(),
@@ -268,3 +307,4 @@ pub fn eval_identifier(name: &str, env: &mut Environment) -> Object {
         },
     }
 }
+*/
