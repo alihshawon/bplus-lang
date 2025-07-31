@@ -2,9 +2,10 @@
 
 use crate::ast::{Expression, Program, Statement};
 use crate::environment::Environment;
-use crate::object::Object;
+use crate::object::{BuiltinFunction, Object};
+use chrono::Local;
 use std::io::{self, Write};
-
+use std::panic;
 
 pub fn eval(node: Program, env: &mut Environment) -> Object {
     let mut result = Object::Null;
@@ -12,8 +13,8 @@ pub fn eval(node: Program, env: &mut Environment) -> Object {
     for statement in node {
         result = eval_statement(statement, env);
 
-        match result {
-            Object::ReturnValue(value) => return format_boolean(*value),
+        match &result {
+            Object::ReturnValue(value) => return format_boolean(*value.clone()),
             Object::Error(_) => return result,
             _ => (),
         }
@@ -51,7 +52,7 @@ fn eval_block_statement(statements: Vec<Statement>, env: &mut Environment) -> Ob
     for statement in statements {
         result = eval_statement(statement, env);
 
-        match result {
+        match &result {
             Object::ReturnValue(_) | Object::Error(_) => return result,
             _ => (),
         }
@@ -131,8 +132,8 @@ fn eval_bang_operator_expression(right: Object) -> Object {
     match right {
         Object::Boolean(true) => Object::Boolean(false),
         Object::Boolean(false) => Object::Boolean(true),
-        Object::String(s) if s == "Ha" => Object::Boolean(false),
-        Object::String(s) if s == "Na" => Object::Boolean(true),
+        Object::String(ref s) if s == "Ha" => Object::Boolean(false),
+        Object::String(ref s) if s == "Na" => Object::Boolean(true),
         Object::Null => Object::Boolean(true),
         _ => Object::Boolean(false),
     }
@@ -146,7 +147,6 @@ fn eval_minus_prefix_operator_expression(right: Object) -> Object {
 }
 
 fn eval_infix_expression(operator: &str, left: Object, right: Object) -> Object {
-    // Object::String("Ha"/"Na") as boolean
     fn to_bool(obj: &Object) -> Option<bool> {
         match obj {
             Object::Boolean(b) => Some(*b),
@@ -168,7 +168,13 @@ fn eval_infix_expression(operator: &str, left: Object, right: Object) -> Object 
             "!=" => Object::Boolean(l != r),
             _ => Object::Error(format!("unknown operator: {:?} {} {:?}", left, operator, right)),
         },
-        // if boolean come from Ha/Na string, then compare as boolean
+        (Object::String(l), Object::String(r)) => {
+            if operator == "+" {
+                Object::String(format!("{}{}", l, r))
+            } else {
+                Object::Error(format!("unknown operator for strings: {}", operator))
+            }
+        }
         _ => {
             if let (Some(lb), Some(rb)) = (to_bool(&left), to_bool(&right)) {
                 match operator {
@@ -197,7 +203,13 @@ fn eval_expressions(exprs: Vec<Expression>, env: &mut Environment) -> Vec<Object
 
 fn apply_function(func: Object, args: Vec<Object>) -> Object {
     match func {
-        Object::Builtin(builtin_fn) => builtin_fn(args),
+        Object::BuiltinNative(builtin_fn) => {
+            let result = panic::catch_unwind(|| builtin_fn(args));
+            match result {
+                Ok(val) => val,
+                Err(_) => Object::Error("panic occurred in built-in function".to_string()),
+            }
+        }
         Object::Function { parameters, body, env } => {
             let mut extended_env = Environment::new_enclosed(env);
 
@@ -215,7 +227,10 @@ fn apply_function(func: Object, args: Vec<Object>) -> Object {
                 evaluated
             }
         }
-        _ => Object::Error(format!("not a function: {:?}", func)),
+        _ => {
+            eprintln!("TypeError: tried to call a non-function object: {:?}", func);
+            Object::Error(format!("not a function: {:?}", func))
+        }
     }
 }
 
@@ -223,8 +238,8 @@ fn is_truthy(obj: &Object) -> bool {
     match obj {
         Object::Boolean(b) => *b,
         Object::Null => false,
-        Object::String(s) if s == "Ha" => true,
-        Object::String(s) if s == "Na" => false,
+        Object::String(ref s) if s == "Ha" => true,
+        Object::String(ref s) if s == "Na" => false,
         _ => true,
     }
 }
@@ -240,71 +255,3 @@ fn format_boolean(obj: Object) -> Object {
         _ => obj,
     }
 }
-/// Built-in function to read input from the user
-
-
-
-pub fn builtin_input(args: Vec<Object>) -> Object {
-    if args.len() != 1 {
-        return Object::Error(format!(
-            "wrong number of arguments. got={}, want=1",
-            args.len()
-        ));
-    }
-
-    // Prompt string ta args[0] theke nite hobe, jeta Object::String hisebe asbe
-    if let Object::String(prompt) = &args[0] {
-        print!("{}", prompt);
-        io::stdout().flush().unwrap();
-    } else {
-        // Jodi prompt string na hoy, empty print koro
-        print!("");
-        io::stdout().flush().unwrap();
-    }
-
-    let mut input = String::new();
-    match io::stdin().read_line(&mut input) {
-        Ok(_) => {
-            let trimmed = input.trim_end_matches(&['\n', '\r'][..]).to_string();
-            Object::String(trimmed)
-        }
-        Err(e) => Object::Error(format!("Input bodhgommo noy: {}", e)),
-    }
-}
-
-
-
-
-
-/*
-
-pub fn builtin_input(_args: Vec<Object>) -> Object {
-    print!(""); // Prompt chaile ekhane prompt string use kora jabe
-    io::stdout().flush().unwrap();
-
-    let mut input = String::new();
-
-    match io::stdin().read_line(&mut input) {
-        Ok(_) => {
-            let trimmed = input.trim_end_matches(&['\n', '\r'][..]).to_string();
-            Object::String(trimmed)
-        }
-        Err(e) => Object::Error(format!("Input bodhgommo noy: {}", e)),
-    }
-}
-
-*/
-
-
-/*
-pub fn eval_identifier(name: &str, env: &mut Environment) -> Object {
-    match env.get(name) {
-        Some(obj) => obj.clone(),
-        None => match name {
-            //"dekhao" => Object::Builtin(builtin_print),
-            "input" => Object::Builtin(builtin_input),
-            _ => Object::Error(format!("Undefined identifier: {}", name)),
-        },
-    }
-}
-*/

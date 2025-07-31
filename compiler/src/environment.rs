@@ -1,12 +1,9 @@
 // compiler/src/environment.rs
 
-//use std::io::{self, Write}; // For printing in built-in functions
 use crate::object::Object;
 use std::collections::HashMap;
-use crate::evaluator::builtin_input;
+use std::io::{self, Write};  // For real user input
 
-
-// compiler/src/environment.rs
 #[derive(Clone, Debug, PartialEq)]
 pub struct Environment {
     store: HashMap<String, Object>,
@@ -17,59 +14,79 @@ impl Environment {
     pub fn new() -> Environment {
         let mut store = HashMap::new();
 
-        // --- Define Built-in Functions Here ---
-
-        // Define the 'dekhao' function
+        // 'dekhao' builtin function
         store.insert(
             "dekhao".to_string(),
-            Object::Builtin(|args| {
+            Object::BuiltinNative(|args| {
                 if args.len() != 1 {
                     return Object::Error(format!(
                         "wrong number of arguments. got={}, want=1",
                         args.len()
                     ));
                 }
-                // The actual print happens here
                 println!("{}", args[0]);
                 Object::Null
             }),
         );
-    
 
-        store.insert("input".to_string(), Object::Builtin(builtin_input));
-
-    /*
+        // 'input' builtin function with real input reading
         store.insert(
             "input".to_string(),
-            Object::Builtin(|args| {
-                if args.len() != 1 {
+            Object::BuiltinNative(|args| {
+                if args.len() > 1 {
                     return Object::Error(format!(
-                        "wrong number of arguments. got={}, want=1",
+                        "wrong number of arguments. got={}, want=0 or 1",
                         args.len()
                     ));
                 }
-                print!("{}", args[0]);  // prompt string print korbe
+
+                let prompt = if args.len() == 1 {
+                    format!("{}", args[0])
+                } else {
+                    "".to_string()
+                };
+
+                print!("{}", prompt);
                 io::stdout().flush().unwrap();
 
-                let mut input = String::new();
-                match io::stdin().read_line(&mut input) {
-                    Ok(_) => Object::String(input.trim().to_string()),
-                    Err(_) => Object::Error("failed to read input".to_string()),
+                let mut input_line = String::new();
+                match io::stdin().read_line(&mut input_line) {
+                    Ok(_) => {
+                        let input_str = input_line.trim().to_string();
+                        Object::String(input_str)
+                    }
+                    Err(_) => Object::Error("Failed to read input".to_string()),
                 }
             }),
         );
-    */
 
+        // 'shomoy' builtin function placeholder, can return current time as string
+        store.insert(
+            "shomoy".to_string(),
+            Object::BuiltinNative(|_args| {
+                use chrono::Local;
+                let now = Local::now();
+                Object::String(now.format("%Y-%m-%d %H:%M:%S").to_string())
+            }),
+        );
 
+        // 'shuru_koro' builtin function
+        store.insert(
+            "shuru_koro".to_string(),
+            Object::BuiltinNative(|_args| {
+                println!("প্রোগ্রাম পুনরায় শুরু হচ্ছে...");
+                Object::Null
+            }),
+        );
 
-
-
-
-
-
-        // You can add more built-in functions here later
-        // For example, a len() function:
-        // store.insert("len".to_string(), Object::Builtin(...));
+        // 'bondho_koro' builtin function
+        store.insert(
+            "bondho_koro".to_string(),
+            Object::BuiltinNative(|_args| {
+                println!("প্রোগ্রাম বন্ধ করা হলো। ধন্যবাদ!");
+                Object::Null
+            }),
+        );
 
         Environment { store, outer: None }
     }

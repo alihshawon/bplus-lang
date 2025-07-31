@@ -1,6 +1,5 @@
 // compiler/src/main.rs
 
-// Removed unused module declarations
 // compiler/src/main.rs
 
 mod ast;
@@ -14,6 +13,8 @@ mod token;
 use environment::Environment;
 use lexer::Lexer;
 use parser::Parser;
+use std::env;
+use std::fs;
 use std::io::{self, Write};
 
 fn brackets_balanced(input: &str) -> bool {
@@ -31,7 +32,39 @@ fn brackets_balanced(input: &str) -> bool {
     count == 0
 }
 
+fn run_source(source: &str) {
+    let mut env = Environment::new();
+    let lexer = Lexer::new(source.to_string());
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+
+    if !parser.errors.is_empty() {
+        for error in parser.errors {
+            eprintln!("Parser error: {}", error);
+        }
+        return;
+    }
+
+    let evaluated = evaluator::eval(program, &mut env);
+    if evaluated != object::Object::Null {
+        println!("{}", evaluated);
+    }
+}
+
 fn main() {
+    let args: Vec<String> = env::args().collect();
+
+    // File mode
+    if args.len() > 1 {
+        let filename = &args[1];
+        match fs::read_to_string(filename) {
+            Ok(source) => run_source(&source),
+            Err(err) => eprintln!("File read error: {}", err),
+        }
+        return;
+    }
+
+    // REPL mode
     println!("Welcome to the B+!");
     println!("You can now use Bangla keywords.");
     println!("Try koro: jodi (10 > 5) {{ dekhao(\"10 is greater than 5!\") }}");
@@ -77,7 +110,9 @@ fn main() {
             }
             input_buffer.clear();
         }
-        // else: continue reading lines until balanced
     }
 }
+
+
+
 // End of main.rs

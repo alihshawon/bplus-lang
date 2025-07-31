@@ -4,21 +4,30 @@ use crate::ast::{Expression, Statement};
 use crate::environment::Environment;
 use std::fmt;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BuiltinFunction {
+    Dekhao,
+    Input,
+    Shomoy,
+    // Future: Tarikh, FileRead, SystemInfo, etc.
+}
+
+#[derive(Debug, PartialEq, Clone)]
+
 pub enum Object {
     Integer(i64),
     Boolean(bool),
     String(String),
     Null,
     ReturnValue(Box<Object>),
+    BuiltinFunction(BuiltinFunction),          // Named builtin function
+    BuiltinNative(fn(Vec<Object>) -> Object),  // Native Rust function pointer
     Error(String),
     Function {
         parameters: Vec<Expression>, // Identifier expressions
         body: Vec<Statement>,
         env: Environment,
     },
-    // Added to represent functions implemented in Rust
-    Builtin(fn(Vec<Object>) -> Object),
 }
 
 impl fmt::Display for Object {
@@ -35,14 +44,25 @@ impl fmt::Display for Object {
                 let params: Vec<String> = parameters.iter().map(|p| format!("{}", p)).collect();
                 write!(f, "fn({}) {{ ... }}", params.join(", "))
             }
-            Object::Builtin(_) => write!(f, "[builtin function]"),
+            Object::BuiltinFunction(name) => write!(f, "[builtin: {:?}]", name),
+            Object::BuiltinNative(_) => write!(f, "[native builtin function]"),
         }
     }
 }
-/*
+
 impl Object {
     pub fn is_error(&self) -> bool {
         matches!(self, Object::Error(_))
     }
 }
-*/
+
+impl BuiltinFunction {
+    pub fn from_name(name: &str) -> Option<BuiltinFunction> {
+        match name {
+            "dekhao" => Some(BuiltinFunction::Dekhao),
+            "input" => Some(BuiltinFunction::Input),
+            "shomoy" => Some(BuiltinFunction::Shomoy),
+            _ => None,
+        }
+    }
+}

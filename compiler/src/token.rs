@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use once_cell::sync::Lazy;
 
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum TokenType {
     Illegal,
     Eof,
@@ -48,6 +48,9 @@ pub enum TokenType {
     Jodi,
     Nahoy,
     Ferot,
+    Dekhao,
+    Input,
+    Shomoy,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -65,12 +68,12 @@ impl Token {
     }
 }
 
-/// Normalize input by making it lowercase and removing spaces
+/// Normalize input by converting to lowercase and removing spaces.
 fn normalize_keyword(ident: &str) -> String {
     ident.to_lowercase().replace(' ', "")
 }
 
-// Static keyword map using once_cell
+/// Static keyword map for fast lookup.
 static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     let mut map = HashMap::new();
 
@@ -114,12 +117,12 @@ static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     map
 });
 
-/// Looks up an identifier string to see if it's a keyword or a synonym.
+/// Lookup if an identifier matches a keyword or return Ident otherwise.
 pub fn lookup_ident(ident: &str) -> TokenType {
     let normalized = normalize_keyword(ident);
 
-    if let Some(tok_type) = KEYWORDS.get(normalized.as_str()) {
-        tok_type.clone()
+    if let Some(&tok_type) = KEYWORDS.get(normalized.as_str()) {
+        tok_type
     } else {
         TokenType::Ident
     }

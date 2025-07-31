@@ -1,0 +1,38 @@
+fn bondho_koro() {
+    dekhao("ধন্যবাদ! দেখা হবে আবার।");
+}
+
+fn shuru_koro() {
+    dekhao("স্বাগতম B+ প্রোগ্রামে!");
+
+    dekhao("তোমার নাম লিখো:");
+    dhoro nam = input();
+
+    dekhao(nam + ", এবার তোমার জন্ম সাল লিখো:");
+    dhoro jonmo_saal_str = input();
+
+    dhoro jonmo_saal = shongkha_banao(jonmo_saal_str);
+
+    dhoro boyosh = 2025 - jonmo_saal;
+
+    dekhao(nam + ", তুমি " + boyosh + " বছর বয়সী।");
+
+    dekhao("Restart করতে 1 চাপো, Exit করতে 0 চাপো:");
+    dhoro choice_str = input();
+
+    dhoro choice = shongkha_banao(choice_str);
+
+    jodi (choice == 1) {
+        dekhao("পুনরায় শুরু হচ্ছে...");
+        shuru_koro();
+    }
+    nahoy jodi (choice == 0) {
+        bondho_koro();
+    }
+    nahoy {
+        dekhao("অবৈধ ইনপুট! প্রোগ্রাম শেষ হচ্ছে।");
+        bondho_koro();
+    }
+}
+
+shuru_koro();
