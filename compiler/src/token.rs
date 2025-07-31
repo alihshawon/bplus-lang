@@ -11,6 +11,9 @@ pub enum TokenType {
     // Identifiers + literals
     Ident,
     Int,
+    Float,
+    List,
+    Set,
     String,
 
     // Operators
@@ -23,6 +26,8 @@ pub enum TokenType {
     Lt,
     Gt,
     Eq,
+    LtEq,
+    GtEq,
     NotEq,
 
     // Delimiters
@@ -32,6 +37,8 @@ pub enum TokenType {
     RParen,
     LBrace,
     RBrace,
+    LBracket,
+    RBracket,
 
     // Keywords
     Function,
