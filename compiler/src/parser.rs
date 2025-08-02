@@ -241,9 +241,15 @@ impl Parser {
                 self.next_token();
             }
 
-            alternative = if self.peek_token_is(TokenType::LBrace) {
+            if self.peek_token_is(TokenType::Jodi) {
+                self.next_token(); // consume 'jodi'
+                // else if এর জন্য recursive call
+                alternative = Some(vec![Statement::ExpressionStatement {
+                    expression: self.parse_if_expression()?,
+                }]);
+            } else if self.peek_token_is(TokenType::LBrace) {
                 self.next_token();
-                Some(self.parse_block_statement()?)
+                alternative = Some(self.parse_block_statement()?);
             } else {
                 self.next_token();
                 let stmt = self.parse_statement().unwrap_or_else(|| {
@@ -252,7 +258,7 @@ impl Parser {
                         expression: Expression::Boolean(false),
                     }
                 });
-                Some(vec![stmt])
+                alternative = Some(vec![stmt]);
             };
         }
 
