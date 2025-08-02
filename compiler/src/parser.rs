@@ -4,6 +4,7 @@ use crate::ast::{Expression, Program, Statement};
 use crate::lexer::Lexer;
 use crate::token::{Token, TokenType};
 use std::collections::HashMap;
+use std::io::{self, Write};
 
 #[derive(PartialEq, PartialOrd)]
 enum Precedence {
@@ -62,7 +63,6 @@ impl Parser {
         p.register_infix(TokenType::Gt, Self::parse_infix_expression);
         p.register_infix(TokenType::LParen, Self::parse_call_expression);
 
-        // Read two tokens, so cur_token and peek_token are both set
         p.next_token();
         p.next_token();
         p
@@ -155,7 +155,7 @@ impl Parser {
         Some(left_exp)
     }
 
-    // --- Prefix Parsing Functions ---
+    // Prefix parsing functions
 
     fn parse_identifier(&mut self) -> Option<Expression> {
         Some(Expression::Identifier(self.cur_token.literal.clone()))
@@ -196,26 +196,64 @@ impl Parser {
     }
 
     fn parse_if_expression(&mut self) -> Option<Expression> {
-        if !self.expect_peek(TokenType::LParen) {
-            return None;
-        }
-        self.next_token();
-        let condition = self.parse_expression(Precedence::LOWEST)?;
-        if !self.expect_peek(TokenType::RParen) {
-            return None;
-        }
-        if !self.expect_peek(TokenType::LBrace) {
-            return None;
-        }
-        let consequence = self.parse_block_statement()?;
+        self.next_token(); // consume 'jodi'
 
-        let mut alternative = None;
-        if self.peek_token_is(TokenType::Nahoy) {
+        let condition = if self.cur_token_is(TokenType::LParen) {
             self.next_token();
-            if !self.expect_peek(TokenType::LBrace) {
+            let cond = self.parse_expression(Precedence::LOWEST)?;
+            if !self.expect_peek(TokenType::RParen) {
                 return None;
             }
-            alternative = Some(self.parse_block_statement()?);
+            cond
+        } else {
+            self.parse_expression(Precedence::LOWEST)?
+        };
+
+        // accept optional 'hoy', 'tahole', and comma tokens after condition
+        self.accept_optional_keywords(&[TokenType::Hoy, TokenType::Tahole, TokenType::Comma]);
+
+        let consequence = if self.peek_token_is(TokenType::LBrace) {
+            self.next_token();
+            self.parse_block_statement()?
+        } else {
+            self.next_token();
+            let stmt = self.parse_statement().unwrap_or_else(|| {
+                self.errors.push("Expected statement after jodi consequence".to_string());
+                Statement::ExpressionStatement {
+                    expression: Expression::Boolean(false),
+                }
+            });
+            vec![stmt]
+        };
+
+        let else_keywords = [
+            TokenType::Nahoy,
+            TokenType::Noyto,
+            TokenType::Noile,
+            TokenType::Othoba,
+        ];
+
+        let mut alternative = None;
+        if else_keywords.iter().any(|&kw| self.peek_token_is(kw)) {
+            self.next_token();
+
+            if self.peek_token_is(TokenType::Comma) {
+                self.next_token();
+            }
+
+            alternative = if self.peek_token_is(TokenType::LBrace) {
+                self.next_token();
+                Some(self.parse_block_statement()?)
+            } else {
+                self.next_token();
+                let stmt = self.parse_statement().unwrap_or_else(|| {
+                    self.errors.push("Expected statement after else part".to_string());
+                    Statement::ExpressionStatement {
+                        expression: Expression::Boolean(false),
+                    }
+                });
+                Some(vec![stmt])
+            };
         }
 
         Some(Expression::If {
@@ -225,9 +263,15 @@ impl Parser {
         })
     }
 
+    fn accept_optional_keywords(&mut self, keywords: &[TokenType]) {
+        while keywords.iter().any(|&kw| self.peek_token.token_type == kw) {
+            self.next_token();
+        }
+    }
+
     fn parse_block_statement(&mut self) -> Option<Vec<Statement>> {
         let mut statements = Vec::new();
-        self.next_token(); // consume {
+        self.next_token(); // consume '{'
 
         while !self.cur_token_is(TokenType::RBrace) && !self.cur_token_is(TokenType::Eof) {
             if let Some(stmt) = self.parse_statement() {
@@ -244,6 +288,10 @@ impl Parser {
         }
 
         let parameters = self.parse_function_parameters()?;
+
+        if !self.expect_peek(TokenType::RParen) { // corrected from RBrace to RParen
+            return None;
+        }
 
         if !self.expect_peek(TokenType::LBrace) {
             return None;
@@ -279,7 +327,7 @@ impl Parser {
         Some(identifiers)
     }
 
-    // --- Infix Parsing Functions ---
+    // Infix parsing functions
 
     fn parse_infix_expression(&mut self, left: Expression) -> Option<Expression> {
         let operator = self.cur_token.literal.clone();
@@ -293,35 +341,29 @@ impl Parser {
         let arguments = self.parse_call_arguments()?;
         Some(Expression::Call { function: Box::new(function), arguments })
     }
-    
-    // CORRECTED FUNCIION
+
     fn parse_call_arguments(&mut self) -> Option<Vec<Expression>> {
         let mut args = Vec::new();
 
-        // Handles the case of zero arguments, like dekhao()
         if self.peek_token_is(TokenType::RParen) {
-            self.next_token(); // Consume the ')'
+            self.next_token();
             return Some(args);
         }
 
-        // Consume the '(' and get ready to parse the first argument
         self.next_token();
 
-        // Parse the first argument
         if let Some(exp) = self.parse_expression(Precedence::LOWEST) {
             args.push(exp);
         }
 
-        // As long as we see a comma, there are more arguments to parse
         while self.peek_token_is(TokenType::Comma) {
-            self.next_token(); // Consume the comma
-            self.next_token(); // Move to the next argument's token
+            self.next_token();
+            self.next_token();
             if let Some(exp) = self.parse_expression(Precedence::LOWEST) {
                 args.push(exp);
             }
         }
 
-        // After all arguments, we must find a closing ')'
         if !self.expect_peek(TokenType::RParen) {
             return None;
         }
@@ -329,8 +371,7 @@ impl Parser {
         Some(args)
     }
 
-
-    // --- Helper Methods ---
+    // Helper methods
 
     fn cur_token_is(&self, t: TokenType) -> bool {
         self.cur_token.token_type == t
@@ -386,5 +427,39 @@ impl Parser {
 
     fn register_infix(&mut self, token_type: TokenType, func: InfixParseFn) {
         self.infix_parse_fns.insert(token_type, func);
+    }
+
+    // Interactive mode for REPL
+
+    pub fn run_interactive_mode(&mut self) {
+        let mut input = String::new();
+        loop {
+            print!("> ");
+            io::stdout().flush().unwrap();
+            input.clear();
+            if io::stdin().read_line(&mut input).is_err() {
+                eprintln!("Error reading input");
+                continue;
+            }
+            let trimmed_input = input.trim();
+            if trimmed_input.is_empty() {
+                continue;
+            }
+            if !Self::brackets_balanced(trimmed_input) {
+                eprintln!("Unbalanced brackets in input");
+                continue;
+            }
+            Self::run_source(trimmed_input);
+        }
+    }
+
+    // Placeholder for bracket balance checking; implement as needed
+    fn brackets_balanced(_input: &str) -> bool {
+        true
+    }
+
+    // Placeholder for running source code input; implement as needed
+    fn run_source(_source: &str) {
+        // Implement your source code execution here
     }
 }

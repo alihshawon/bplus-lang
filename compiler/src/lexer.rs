@@ -1,12 +1,11 @@
-//compiler/src/lexer.rs
-
+// compiler/src/lexer.rs
 
 use crate::token::{lookup_ident, Token, TokenType};
 
 pub struct Lexer {
     input: String,
-    position: usize,      // current position in input
-    read_position: usize, // current reading position (after current char)
+    position: usize,      // current position in input (points to current char)
+    read_position: usize, // next position to read (after current char)
     ch: u8,               // current char under examination
 }
 
@@ -24,9 +23,16 @@ impl Lexer {
 
     fn read_char(&mut self) {
         if self.read_position >= self.input.len() {
-            self.ch = 0; // NUL character, signifies EOF
+            self.ch = 0; // NUL character to signify EOF
         } else {
-            self.ch = self.input.as_bytes()[self.read_position];
+            // Check if current position points to a Bengali unicode letter (3 bytes)
+            if self.is_unicode_bengali_letter() {
+                // We will read only the first byte here for lexer 'ch'
+                // But actual identifier reading reads the full string
+                self.ch = self.input.as_bytes()[self.position];
+            } else {
+                self.ch = self.input.as_bytes()[self.read_position];
+            }
         }
         self.position = self.read_position;
         self.read_position += 1;
@@ -76,7 +82,8 @@ impl Lexer {
                 let literal = self.read_string();
                 return Token::new(TokenType::String, &literal);
             }
-            b'a'..=b'z' | b'A'..=b'Z' | b'_' => {
+            // Identifiers: ASCII letters, underscore, or Bengali unicode letters
+            _ if self.ch.is_ascii_alphabetic() || self.ch == b'_' || self.is_unicode_bengali_letter() => {
                 let literal = self.read_identifier();
                 let token_type = lookup_ident(&literal);
                 return Token::new(token_type, &literal);
@@ -94,42 +101,57 @@ impl Lexer {
     }
 
     fn read_identifier(&mut self) -> String {
-        let position = self.position;
-        while self.ch.is_ascii_alphabetic() || self.ch == b'_' {
+        let start_pos = self.position;
+
+        while self.ch.is_ascii_alphabetic() || self.ch == b'_' || self.is_unicode_bengali_letter() {
             self.read_char();
         }
-        self.input[position..self.position].to_string()
+
+        self.input[start_pos..self.position].to_string()
     }
 
     fn read_number(&mut self) -> String {
-        let position = self.position;
+        let start_pos = self.position;
+
         while self.ch.is_ascii_digit() {
             self.read_char();
         }
-        self.input[position..self.position].to_string()
+
+        self.input[start_pos..self.position].to_string()
     }
 
     fn read_string(&mut self) -> String {
-    let position = self.position + 1;
+        let start_pos = self.position + 1; // skip opening quote
 
-    loop {
-        self.read_char();
-        if self.ch == b'"' || self.ch == 0 {
-            break;
+        loop {
+            self.read_char();
+            if self.ch == b'"' || self.ch == 0 {
+                break;
+            }
         }
+
+        let result = self.input[start_pos..self.position].to_string();
+
+        self.read_char(); // skip closing quote
+
+        result
     }
-
-    let result = self.input[position..self.position].to_string();
-
-    //Move past closing quote
-    self.read_char();
-
-    result
-}
 
     fn skip_whitespace(&mut self) {
         while self.ch.is_ascii_whitespace() {
             self.read_char();
         }
+    }
+
+    /// Check if current character is start of a Bengali Unicode letter (3-byte UTF-8 sequence)
+    /// Bengali Unicode range: U+0980 to U+09FF
+    fn is_unicode_bengali_letter(&self) -> bool {
+        // Check if enough bytes available
+        if self.position + 3 > self.input.len() {
+            return false;
+        }
+        let bytes = &self.input.as_bytes()[self.position..self.position + 3];
+        // UTF-8 Bengali chars start with 0xE0, second byte 0xA6-0xAF, third byte 0x80-0xBF
+        bytes[0] == 0xE0 && (0xA6..=0xAF).contains(&bytes[1]) && (0x80..=0xBF).contains(&bytes[2])
     }
 }

@@ -65,17 +65,21 @@ impl fmt::Display for Expression {
             Expression::Identifier(s) => write!(f, "{}", s),
             Expression::IntegerLiteral(i) => write!(f, "{}", i),
             Expression::StringLiteral(s) => write!(f, "\"{}\"", s),
-            Expression::Boolean(b) => write!(f, "{}", b),
+            Expression::Boolean(b) => {
+                let s = if *b { "Ha" } else { "Na" };
+                    write!(f, "{}", s)
+            }
+
             Expression::Prefix { operator, right } => write!(f, "({}{})", operator, right),
             Expression::Infix { left, operator, right } => write!(f, "({} {} {})", left, operator, right),
             Expression::If { condition, consequence, alternative } => {
-                let mut s = format!("if {} {{ ", condition);
+                let mut s = format!("jodi {} {{ ", condition);
                 for stmt in consequence {
                     s.push_str(&format!("{}", stmt));
                 }
                 s.push_str(" }");
                 if let Some(alt) = alternative {
-                    s.push_str(" else { ");
+                    s.push_str(" nahoy { ");
                     for stmt in alt {
                         s.push_str(&format!("{}", stmt));
                     }

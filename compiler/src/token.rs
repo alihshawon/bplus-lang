@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 use once_cell::sync::Lazy;
+use std::fmt;
 
 #[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum TokenType {
@@ -46,7 +47,12 @@ pub enum TokenType {
     Ha,
     Na,
     Jodi,
+    Hoy,
+    Tahole,
     Nahoy,
+    Noyto,
+    Noile,
+    Othoba,
     Ferot,
     Dekhao,
     Input,
@@ -65,6 +71,62 @@ impl Token {
             token_type,
             literal: literal.to_string(),
         }
+    }
+}
+
+/// Implement Display trait for TokenType to enable to_string() calls
+impl fmt::Display for TokenType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            TokenType::Illegal => "Illegal",
+            TokenType::Eof => "EOF",
+
+            TokenType::Ident => "Ident",
+            TokenType::Int => "Int",
+            TokenType::Float => "Float",
+            TokenType::List => "List",
+            TokenType::Set => "Set",
+            TokenType::String => "String",
+
+            TokenType::Assign => "=",
+            TokenType::Plus => "+",
+            TokenType::Minus => "-",
+            TokenType::Bang => "!",
+            TokenType::Asterisk => "*",
+            TokenType::Slash => "/",
+            TokenType::Lt => "<",
+            TokenType::Gt => ">",
+            TokenType::Eq => "==",
+            TokenType::LtEq => "<=",
+            TokenType::GtEq => ">=",
+            TokenType::NotEq => "!=",
+
+            TokenType::Comma => ",",
+            TokenType::Semicolon => ";",
+            TokenType::LParen => "(",
+            TokenType::RParen => ")",
+            TokenType::LBrace => "{",
+            TokenType::RBrace => "}",
+            TokenType::LBracket => "[",
+            TokenType::RBracket => "]",
+
+            TokenType::Function => "function",
+            TokenType::Dhoro => "dhoro",
+            TokenType::Ha => "ha",
+            TokenType::Na => "na",
+            TokenType::Jodi => "jodi",
+            TokenType::Hoy => "hoy",
+            TokenType::Tahole => "tahole",
+            TokenType::Nahoy => "nahoy",
+            TokenType::Noyto => "noyto",
+            TokenType::Noile => "noile",
+            TokenType::Othoba => "othoba",
+            TokenType::Ferot => "ferot",
+            TokenType::Dekhao => "dekhao",
+            TokenType::Input => "input",
+            TokenType::Shomoy => "shomoy",
+        };
+        write!(f, "{}", s)
     }
 }
 
@@ -92,23 +154,32 @@ static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     // Boolean true variants
     map.insert("ha", TokenType::Ha);
     map.insert("thik", TokenType::Ha);
+    map.insert("thikache", TokenType::Ha);
     map.insert("sotti", TokenType::Ha);
     map.insert("true", TokenType::Ha);
 
     // Boolean false variants
     map.insert("na", TokenType::Na);
     map.insert("mitthe", TokenType::Na);
+    map.insert("mitha", TokenType::Na);
     map.insert("false", TokenType::Na);
 
     // Conditional 'if' variants
     map.insert("jodi", TokenType::Jodi);
-    map.insert("yodi", TokenType::Jodi);
-    map.insert("if", TokenType::Jodi);
+
+    // Remaining part of conditional 'if' statements
+    map.insert("hoy", TokenType::Hoy);
+
+    // Conditional 'then' variants
+    map.insert("tahole", TokenType::Tahole);
 
     // Conditional 'else' variants
     map.insert("nahoy", TokenType::Nahoy);
     map.insert("nahole", TokenType::Nahoy);
-    map.insert("else", TokenType::Nahoy);
+    map.insert("noyto", TokenType::Noyto);
+    map.insert("noile", TokenType::Noile);
+    map.insert("othoba", TokenType::Othoba);
+
 
     // Return statement variants
     map.insert("ferot", TokenType::Ferot);
