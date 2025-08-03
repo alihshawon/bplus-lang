@@ -40,6 +40,8 @@ pub enum TokenType {
     RBrace,
     LBracket,
     RBracket,
+    Fullstop, // .
+    Colon,   // :
 
     // Keywords
     Function,
@@ -53,10 +55,27 @@ pub enum TokenType {
     Noyto,
     Noile,
     Othoba,
+    Ebong,
+    Ba,
     Ferot,
     Dekhao,
     Input,
     Shomoy,
+
+    // Comment base tokens
+    EkLineMontobbo,
+    BohuLineMontobboShuru,
+    BohuLineMontobboShesh,
+
+    // Loop tokens
+    Jotokhon,
+    AgeKoro,
+    Jonno,
+    ProtitarJonno,
+    Choluk,
+    Thamo,
+    Jekhane,
+    Protibar,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -74,7 +93,6 @@ impl Token {
     }
 }
 
-/// Implement Display trait for TokenType to enable to_string() calls
 impl fmt::Display for TokenType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
@@ -110,6 +128,9 @@ impl fmt::Display for TokenType {
             TokenType::LBracket => "[",
             TokenType::RBracket => "]",
 
+            TokenType::Fullstop => ".",
+            TokenType::Colon => ":",
+
             TokenType::Function => "function",
             TokenType::Dhoro => "dhoro",
             TokenType::Ha => "ha",
@@ -121,25 +142,38 @@ impl fmt::Display for TokenType {
             TokenType::Noyto => "noyto",
             TokenType::Noile => "noile",
             TokenType::Othoba => "othoba",
+            TokenType::Ba => "ba",
+            TokenType::Ebong => "ebong",
             TokenType::Ferot => "ferot",
             TokenType::Dekhao => "dekhao",
             TokenType::Input => "input",
             TokenType::Shomoy => "shomoy",
+
+            TokenType::EkLineMontobbo => "EkLineMontobbo",
+            TokenType::BohuLineMontobboShuru => "BohuLineMontobboShuru",
+            TokenType::BohuLineMontobboShesh => "BohuLineMontobboShesh",
+
+            TokenType::Jotokhon => "jotokhon",
+            TokenType::AgeKoro => "age koro",
+            TokenType::Jonno => "jonno",
+            TokenType::ProtitarJonno => "protitar jonno",
+            TokenType::Choluk => "choluk",
+            TokenType::Thamo => "thamo",
+            TokenType::Jekhane => "jekhane",
+            TokenType::Protibar => "protibar",
         };
         write!(f, "{}", s)
     }
 }
 
-/// Normalize input by converting to lowercase and removing spaces.
 fn normalize_keyword(ident: &str) -> String {
     ident.to_lowercase().replace(' ', "")
 }
 
-/// Static keyword map for fast lookup.
 static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     let mut map = HashMap::new();
 
-    // Let variants
+    // Let/Variable declaration variants
     map.insert("dhoro", TokenType::Dhoro);
     map.insert("dhori", TokenType::Dhoro);
     map.insert("monekori", TokenType::Dhoro);
@@ -164,34 +198,87 @@ static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     map.insert("mitha", TokenType::Na);
     map.insert("false", TokenType::Na);
 
-    // Conditional 'if' variants
+    // If/condition start
     map.insert("jodi", TokenType::Jodi);
 
-    // Remaining part of conditional 'if' statements
+    // Condition mid
     map.insert("hoy", TokenType::Hoy);
+    map.insert("hoye", TokenType::Hoy);
 
-    // Conditional 'then' variants
+    // Then
     map.insert("tahole", TokenType::Tahole);
+    map.insert("tobe", TokenType::Tahole);
 
-    // Conditional 'else' variants
+    // Else variants
     map.insert("nahoy", TokenType::Nahoy);
     map.insert("nahole", TokenType::Nahoy);
-    map.insert("noyto", TokenType::Noyto);
-    map.insert("noile", TokenType::Noile);
-    map.insert("othoba", TokenType::Othoba);
+    map.insert("noyto", TokenType::Nahoy);
+    map.insert("noile", TokenType::Nahoy);
 
+    // Logical operators
+    map.insert("ebong", TokenType::Ebong);
+    map.insert("and", TokenType::Ebong);
+    map.insert("ba", TokenType::Ba);
+    map.insert("or", TokenType::Ba);
 
-    // Return statement variants
+    // Return statement
     map.insert("ferot", TokenType::Ferot);
+    map.insert("ferotkoro", TokenType::Ferot);
     map.insert("return", TokenType::Ferot);
+
+    // Print variants
+    map.insert("dekhao", TokenType::Dekhao);
+    map.insert("print", TokenType::Dekhao);
+    map.insert("chhapiye dao", TokenType::Dekhao);
+
+    // Input variants
+    map.insert("input", TokenType::Input);
+    map.insert("nau", TokenType::Input);
+    map.insert("naw", TokenType::Input);
+    map.insert("neowa", TokenType::Input);
+
+    // Time variants
+    map.insert("shomoy", TokenType::Shomoy);
+    map.insert("time", TokenType::Shomoy);
+    map.insert("somoy", TokenType::Shomoy);
+
+    // Comment base keywords and their variants
+    map.insert("//", TokenType::EkLineMontobbo);
+    map.insert("#", TokenType::EkLineMontobbo);
+
+    map.insert("/*", TokenType::BohuLineMontobboShuru);
+    map.insert("//--", TokenType::BohuLineMontobboShuru);
+    map.insert("<!--", TokenType::BohuLineMontobboShuru);
+    map.insert("<comment>", TokenType::BohuLineMontobboShuru);
+    map.insert("<cmnt>", TokenType::BohuLineMontobboShuru);
+    map.insert("<montobbo>", TokenType::BohuLineMontobboShuru);
+
+    map.insert("*/", TokenType::BohuLineMontobboShesh);
+    map.insert("--//", TokenType::BohuLineMontobboShesh);
+    map.insert("-->", TokenType::BohuLineMontobboShesh);
+    map.insert("--!>", TokenType::BohuLineMontobboShesh);
+    map.insert("</comment>", TokenType::BohuLineMontobboShesh);
+    map.insert("</cmnt>", TokenType::BohuLineMontobboShesh);
+    map.insert("</montobbo>", TokenType::BohuLineMontobboShesh);
+
+    // Loop keywords
+    map.insert("jotokhon", TokenType::Jotokhon);
+    map.insert("agekoro", TokenType::AgeKoro);
+    map.insert("age koro", TokenType::AgeKoro);
+    map.insert("jonno", TokenType::Jonno);
+    map.insert("protitarjonno", TokenType::ProtitarJonno);
+    map.insert("protitar jonno", TokenType::ProtitarJonno);
+    map.insert("choluk", TokenType::Choluk);
+    map.insert("thamo", TokenType::Thamo);
+    map.insert("bhango", TokenType::Thamo);
+    map.insert("jekhane", TokenType::Jekhane);
+    map.insert("protibar", TokenType::Protibar);
 
     map
 });
 
-/// Lookup if an identifier matches a keyword or return Ident otherwise.
 pub fn lookup_ident(ident: &str) -> TokenType {
     let normalized = normalize_keyword(ident);
-
     if let Some(&tok_type) = KEYWORDS.get(normalized.as_str()) {
         tok_type
     } else {

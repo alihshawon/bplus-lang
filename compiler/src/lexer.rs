@@ -49,6 +49,87 @@ impl Lexer {
     pub fn next_token(&mut self) -> Token {
         self.skip_whitespace();
 
+        // Check for comments first (single-line or multi-line)
+        if self.ch == b'/' {
+            if self.peek_char() == b'/' {
+                self.read_char();
+                self.read_char();
+                self.skip_single_line_comment();
+                return self.next_token();
+            } else if self.peek_char() == b'*' {
+                self.read_char();
+                self.read_char();
+                if let Err(err) = self.skip_multi_line_comment("/*", "*/") {
+                    return Token::new(TokenType::Illegal, &err);
+                }
+                return self.next_token();
+            }
+        } else if self.ch == b'#' {
+            // Python, Ruby, Perl, Bash style single line comment
+            self.read_char();
+            self.skip_single_line_comment();
+            return self.next_token();
+        } else if self.ch == b'-' && self.peek_char() == b'-' {
+            // SQL, Haskell style single line comment --
+            self.read_char();
+            self.read_char();
+            self.skip_single_line_comment();
+            return self.next_token();
+        } else if self.ch == b'=' {
+            // Ruby multiline comment =begin ... =end
+            let lookahead = self.peek_n_chars(5);
+            if lookahead == "begin" {
+                // consume =begin
+                for _ in 0..6 { self.read_char(); } // '=' + 'begin'
+                if let Err(err) = self.skip_multi_line_comment("=begin", "=end") {
+                    return Token::new(TokenType::Illegal, &err);
+                }
+                return self.next_token();
+            }
+        } else if self.ch == b'{' && self.peek_char() == b'-' {
+            // Haskell multiline comment {- ... -}
+            self.read_char();
+            self.read_char();
+            if let Err(err) = self.skip_multi_line_comment("{-", "-}") {
+                return Token::new(TokenType::Illegal, &err);
+            }
+            return self.next_token();
+        } else if self.ch == b'(' && self.peek_char() == b'*' {
+            // OCaml, Pascal multiline comment (* ... *)
+            self.read_char();
+            self.read_char();
+            if let Err(err) = self.skip_multi_line_comment("(*", "*)") {
+                return Token::new(TokenType::Illegal, &err);
+            }
+            return self.next_token();
+        } else if self.ch == b'"' {
+            // Check for Python multiline docstring style """ ... """
+            let lookahead = self.peek_n_chars(2);
+            if lookahead == "\"\"" {
+                // consume opening """
+                self.read_char();
+                self.read_char();
+                self.read_char();
+                if let Err(err) = self.skip_multi_line_comment("\"\"\"", "\"\"\"") {
+                    return Token::new(TokenType::Illegal, &err);
+                }
+                return self.next_token();
+            }
+        } else if self.ch == b'\'' {
+            // Check for Python multiline docstring style ''' ... '''
+            let lookahead = self.peek_n_chars(2);
+            if lookahead == "''" {
+                // consume opening '''
+                self.read_char();
+                self.read_char();
+                self.read_char();
+                if let Err(err) = self.skip_multi_line_comment("'''", "'''") {
+                    return Token::new(TokenType::Illegal, &err);
+                }
+                return self.next_token();
+            }
+        }
+
         let tok = match self.ch {
             b'=' => {
                 if self.peek_char() == b'=' {
@@ -82,6 +163,8 @@ impl Lexer {
                 let literal = self.read_string();
                 return Token::new(TokenType::String, &literal);
             }
+            b'.' => Token::new(TokenType::Fullstop, "."), // <-- Added line for fullstop token
+
             // Identifiers: ASCII letters, underscore, or Bengali unicode letters
             _ if self.ch.is_ascii_alphabetic() || self.ch == b'_' || self.is_unicode_bengali_letter() => {
                 let literal = self.read_identifier();
@@ -98,6 +181,50 @@ impl Lexer {
 
         self.read_char();
         tok
+    }
+
+    fn skip_single_line_comment(&mut self) {
+        while self.ch != b'\n' && self.ch != 0 {
+            self.read_char();
+        }
+    }
+
+    fn skip_multi_line_comment(&mut self, start: &str, end: &str) -> Result<(), String> {
+        let mut end_matched = 0;
+        let end_bytes = end.as_bytes();
+        let end_len = end_bytes.len();
+
+        loop {
+            if self.ch == 0 {
+                return Err(format!("Unterminated multi-line comment starting with {}", start));
+            }
+            if self.ch == end_bytes[end_matched] {
+                end_matched += 1;
+                if end_matched == end_len {
+                    self.read_char(); // consume last char of end delimiter
+                    break;
+                }
+            } else {
+                end_matched = 0;
+            }
+            self.read_char();
+        }
+        Ok(())
+    }
+
+    fn peek_n_chars(&self, n: usize) -> String {
+        let mut result = String::new();
+        let start = self.position + 1;
+        let end = (start + n).min(self.input.len());
+
+        if start >= self.input.len() {
+            return result;
+        }
+
+        for i in start..end {
+            result.push(self.input.as_bytes()[i] as char);
+        }
+        result
     }
 
     fn read_identifier(&mut self) -> String {
@@ -155,3 +282,4 @@ impl Lexer {
         bytes[0] == 0xE0 && (0xA6..=0xAF).contains(&bytes[1]) && (0x80..=0xBF).contains(&bytes[2])
     }
 }
+

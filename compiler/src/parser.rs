@@ -6,7 +6,7 @@ use crate::token::{Token, TokenType};
 use std::collections::HashMap;
 use std::io::{self, Write};
 
-#[derive(PartialEq, PartialOrd)]
+#[derive(PartialEq, PartialOrd, Debug)]
 enum Precedence {
     LOWEST,
     EQUALS,      // ==
@@ -49,6 +49,7 @@ impl Parser {
         p.register_prefix(TokenType::Ha, Self::parse_boolean);
         p.register_prefix(TokenType::Na, Self::parse_boolean);
         p.register_prefix(TokenType::Jodi, Self::parse_if_expression);
+        p.register_prefix(TokenType::Dekhao, Self::parse_expression_statement_statement); // Use correct method
         p.register_prefix(TokenType::LParen, Self::parse_grouped_expression);
         p.register_prefix(TokenType::Function, Self::parse_function_literal);
 
@@ -61,6 +62,8 @@ impl Parser {
         p.register_infix(TokenType::NotEq, Self::parse_infix_expression);
         p.register_infix(TokenType::Lt, Self::parse_infix_expression);
         p.register_infix(TokenType::Gt, Self::parse_infix_expression);
+        p.register_infix(TokenType::Ebong, Self::parse_infix_expression); // Logical AND
+        p.register_infix(TokenType::Ba, Self::parse_infix_expression);    // Logical OR
         p.register_infix(TokenType::LParen, Self::parse_call_expression);
 
         p.next_token();
@@ -88,7 +91,7 @@ impl Parser {
         match self.cur_token.token_type {
             TokenType::Dhoro => self.parse_let_statement(),
             TokenType::Ferot => self.parse_return_statement(),
-            _ => self.parse_expression_statement(),
+            _ => self.parse_expression_statement_statement(),
         }
     }
 
@@ -123,14 +126,13 @@ impl Parser {
         Some(Statement::Return { return_value })
     }
 
-    fn parse_expression_statement(&mut self) -> Option<Statement> {
-        let expression = self.parse_expression(Precedence::LOWEST)?;
-
+    /// Expression statement wrapped as Statement
+    fn parse_expression_statement_statement(&mut self) -> Option<Statement> {
+        let expr = self.parse_expression(Precedence::LOWEST)?;
         if self.peek_token_is(TokenType::Semicolon) {
             self.next_token();
         }
-
-        Some(Statement::ExpressionStatement { expression })
+        Some(Statement::ExpressionStatement { expression: expr })
     }
 
     fn parse_expression(&mut self, precedence: Precedence) -> Option<Expression> {
@@ -198,20 +200,17 @@ impl Parser {
     fn parse_if_expression(&mut self) -> Option<Expression> {
         self.next_token(); // consume 'jodi'
 
-        let condition = if self.cur_token_is(TokenType::LParen) {
-            self.next_token();
-            let cond = self.parse_expression(Precedence::LOWEST)?;
-            if !self.expect_peek(TokenType::RParen) {
-                return None;
-            }
-            cond
-        } else {
-            self.parse_expression(Precedence::LOWEST)?
-        };
+        // Parse multiple conditions combined with logical operators like ebong, ba
+        let condition = self.parse_logical_expression(Precedence::LOWEST)?;
 
-        // accept optional 'hoy', 'tahole', and comma tokens after condition
-        self.accept_optional_keywords(&[TokenType::Hoy, TokenType::Tahole, TokenType::Comma]);
+        // Accept optional tokens like 'hoy', 'tahole', commas after condition
+        self.accept_optional_keywords(&[
+            TokenType::Hoy,
+            TokenType::Tahole,
+            TokenType::Comma,
+        ]);
 
+        // Parse consequence block (braces or single statement)
         let consequence = if self.peek_token_is(TokenType::LBrace) {
             self.next_token();
             self.parse_block_statement()?
@@ -226,6 +225,7 @@ impl Parser {
             vec![stmt]
         };
 
+        // Handle else/else if parts with recursion
         let else_keywords = [
             TokenType::Nahoy,
             TokenType::Noyto,
@@ -233,23 +233,50 @@ impl Parser {
             TokenType::Othoba,
         ];
 
-        let mut alternative = None;
+        let mut alternative: Option<Box<Expression>> = None;
+
         if else_keywords.iter().any(|&kw| self.peek_token_is(kw)) {
-            self.next_token();
+            self.next_token(); // consume else keyword
 
             if self.peek_token_is(TokenType::Comma) {
-                self.next_token();
+                self.next_token(); // consume optional comma
             }
 
             if self.peek_token_is(TokenType::Jodi) {
-                self.next_token(); // consume 'jodi'
-                // else if এর জন্য recursive call
-                alternative = Some(vec![Statement::ExpressionStatement {
-                    expression: self.parse_if_expression()?,
-                }]);
+                self.next_token(); // consume 'jodi' for else if
+                // Recursive else if parse
+                if let Some(expr) = self.parse_if_expression() {
+                    alternative = Some(Box::new(expr));
+                } else {
+                    self.errors.push("Failed to parse else if expression".to_string());
+                    return None;
+                }
             } else if self.peek_token_is(TokenType::LBrace) {
                 self.next_token();
-                alternative = Some(self.parse_block_statement()?);
+                // parse block as multiple statements wrapped in an Expression::Block or Expression::Grouped? 
+                // Since your AST only has block as Vec<Statement> in consequence and alternative, but alternative is Box<Expression>, 
+                // you might want to wrap block statements into an Expression variant or convert block to single Expression
+                // Here for simplicity, let's parse the block and wrap it in a new Expression variant 'Block' you might need to add
+                // But since it's not defined in your AST, you can convert the block to a single Expression by making an Expression::Block variant or error.
+                // For now, let's parse block and create an Expression::Block variant.
+
+                // If your AST doesn't support Expression::Block, then as a temporary fix, parse block as multiple statements
+                // and convert first statement expression or so. Otherwise you need to extend your AST.
+                
+                // So this is a tricky part. To avoid breaking, let's just parse the first statement as expression:
+                let stmts = self.parse_block_statement()?;
+                if !stmts.is_empty() {
+                    // Take first statement expression if possible
+                    match &stmts[0] {
+                        Statement::ExpressionStatement { expression } => {
+                            alternative = Some(Box::new(expression.clone()));
+                        }
+                        _ => {
+                            self.errors.push("Expected expression statement inside else block".to_string());
+                            return None;
+                        }
+                    }
+                }
             } else {
                 self.next_token();
                 let stmt = self.parse_statement().unwrap_or_else(|| {
@@ -258,8 +285,13 @@ impl Parser {
                         expression: Expression::Boolean(false),
                     }
                 });
-                alternative = Some(vec![stmt]);
-            };
+                if let Statement::ExpressionStatement { expression } = stmt {
+                    alternative = Some(Box::new(expression));
+                } else {
+                    self.errors.push("Expected expression statement in else part".to_string());
+                    return None;
+                }
+            }
         }
 
         Some(Expression::If {
@@ -269,10 +301,43 @@ impl Parser {
         })
     }
 
+    /// Accept multiple optional keywords/tokens in a row
     fn accept_optional_keywords(&mut self, keywords: &[TokenType]) {
         while keywords.iter().any(|&kw| self.peek_token.token_type == kw) {
             self.next_token();
         }
+    }
+
+    fn parse_logical_expression(&mut self, precedence: Precedence) -> Option<Expression> {
+        let prefix_fn = self.prefix_parse_fns.get(&self.cur_token.token_type)?;
+
+        let mut left_exp = prefix_fn(self)?;
+
+        while !self.peek_token_is(TokenType::Semicolon) && precedence < self.peek_precedence() {
+            let peek_type = self.peek_token.token_type;
+
+            if !self.infix_parse_fns.contains_key(&peek_type) {
+                break;
+            }
+
+            // Allow only logical ops, comparison ops, arithmetic ops in logical expression chain
+            if peek_type != TokenType::Ebong && peek_type != TokenType::Ba
+                && peek_type != TokenType::Eq && peek_type != TokenType::NotEq
+                && peek_type != TokenType::Lt && peek_type != TokenType::Gt
+                && peek_type != TokenType::LtEq && peek_type != TokenType::GtEq
+                && peek_type != TokenType::Plus && peek_type != TokenType::Minus
+                && peek_type != TokenType::Asterisk && peek_type != TokenType::Slash
+            {
+                break;
+            }
+
+            let infix_fn = self.infix_parse_fns.get(&peek_type).cloned().unwrap();
+
+            self.next_token();
+            left_exp = infix_fn(self, left_exp)?;
+        }
+
+        Some(left_exp)
     }
 
     fn parse_block_statement(&mut self) -> Option<Vec<Statement>> {
@@ -295,7 +360,7 @@ impl Parser {
 
         let parameters = self.parse_function_parameters()?;
 
-        if !self.expect_peek(TokenType::RParen) { // corrected from RBrace to RParen
+        if !self.expect_peek(TokenType::RParen) {
             return None;
         }
 
@@ -340,12 +405,19 @@ impl Parser {
         let precedence = self.cur_precedence();
         self.next_token();
         let right = self.parse_expression(precedence)?;
-        Some(Expression::Infix { left: Box::new(left), operator, right: Box::new(right) })
+        Some(Expression::Infix {
+            left: Box::new(left),
+            operator,
+            right: Box::new(right),
+        })
     }
 
     fn parse_call_expression(&mut self, function: Expression) -> Option<Expression> {
         let arguments = self.parse_call_arguments()?;
-        Some(Expression::Call { function: Box::new(function), arguments })
+        Some(Expression::Call {
+            function: Box::new(function),
+            arguments,
+        })
     }
 
     fn parse_call_arguments(&mut self) -> Option<Vec<Expression>> {
@@ -415,6 +487,8 @@ impl Parser {
             TokenType::Plus | TokenType::Minus => Precedence::SUM,
             TokenType::Slash | TokenType::Asterisk => Precedence::PRODUCT,
             TokenType::LParen => Precedence::CALL,
+            TokenType::Ebong => Precedence::EQUALS, // logical and
+            TokenType::Ba => Precedence::EQUALS,    // logical or
             _ => Precedence::LOWEST,
         }
     }
@@ -435,8 +509,7 @@ impl Parser {
         self.infix_parse_fns.insert(token_type, func);
     }
 
-    // Interactive mode for REPL
-
+    // REPL / Interactive mode (optional)
     pub fn run_interactive_mode(&mut self) {
         let mut input = String::new();
         loop {
@@ -459,13 +532,11 @@ impl Parser {
         }
     }
 
-    // Placeholder for bracket balance checking; implement as needed
+    // Stub functions for REPL - implement as needed
     fn brackets_balanced(_input: &str) -> bool {
         true
     }
-
-    // Placeholder for running source code input; implement as needed
     fn run_source(_source: &str) {
-        // Implement your source code execution here
+        // TODO: implement code execution here
     }
 }

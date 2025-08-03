@@ -95,8 +95,8 @@ fn eval_expression(expr: Expression, env: &mut Environment) -> Object {
             }
             if is_truthy(&condition_obj) {
                 eval_block_statement(consequence, env)
-            } else if let Some(alt) = alternative {
-                eval_block_statement(alt, env)
+            } else if let Some(alt_expr) = alternative {
+                eval_expression(*alt_expr, env)
             } else {
                 Object::Null
             }
@@ -109,6 +109,22 @@ fn eval_expression(expr: Expression, env: &mut Environment) -> Object {
             if is_error(&function_obj) {
                 return function_obj;
             }
+
+            // Convert named builtin functions to native implementations
+            let function_obj = match &function_obj {
+                Object::BuiltinFunction(bf) => {
+                    match bf {
+                        BuiltinFunction::Input => {
+                            Object::BuiltinNative(crate::object::builtin_input)
+                        },
+                        BuiltinFunction::Print => {
+                            Object::BuiltinNative(crate::object::builtin_print)
+                        },
+                        _ => function_obj.clone(),
+                    }
+                }
+                _ => function_obj.clone(),
+            };
 
             let args = eval_expressions(arguments, env);
             if args.len() == 1 && is_error(&args[0]) {

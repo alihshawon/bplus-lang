@@ -17,6 +17,12 @@ pub enum Statement {
     ExpressionStatement {
         expression: Expression,
     },
+    CommentSingleLine {
+        content: String,
+    },
+    CommentMultiLine {
+        content: String,
+    },
 }
 
 impl fmt::Display for Statement {
@@ -25,6 +31,8 @@ impl fmt::Display for Statement {
             Statement::Let { name, value } => write!(f, "let {} = {};", name, value),
             Statement::Return { return_value } => write!(f, "return {};", return_value),
             Statement::ExpressionStatement { expression } => write!(f, "{}", expression),
+            Statement::CommentSingleLine { content } => write!(f, "//{}", content),
+            Statement::CommentMultiLine { content } => write!(f, "/*{}*/", content),
         }
     }
 }
@@ -47,7 +55,7 @@ pub enum Expression {
     If {
         condition: Box<Expression>,
         consequence: Vec<Statement>, // Block of statements
-        alternative: Option<Vec<Statement>>,
+        alternative: Option<Box<Expression>>, // None or else block OR else if (nested If)
     },
     FunctionLiteral {
         parameters: Vec<Expression>, // List of identifiers
@@ -67,26 +75,38 @@ impl fmt::Display for Expression {
             Expression::StringLiteral(s) => write!(f, "\"{}\"", s),
             Expression::Boolean(b) => {
                 let s = if *b { "Ha" } else { "Na" };
-                    write!(f, "{}", s)
+                write!(f, "{}", s)
             }
 
             Expression::Prefix { operator, right } => write!(f, "({}{})", operator, right),
             Expression::Infix { left, operator, right } => write!(f, "({} {} {})", left, operator, right),
+
             Expression::If { condition, consequence, alternative } => {
                 let mut s = format!("jodi {} {{ ", condition);
                 for stmt in consequence {
                     s.push_str(&format!("{}", stmt));
                 }
                 s.push_str(" }");
-                if let Some(alt) = alternative {
-                    s.push_str(" nahoy { ");
-                    for stmt in alt {
-                        s.push_str(&format!("{}", stmt));
+
+                if let Some(alt_expr) = alternative {
+                    match alt_expr.as_ref() {
+                        Expression::If { .. } => {
+                            // else if chain
+                            s.push_str(" nahoy ");
+                            s.push_str(&format!("{}", alt_expr));
+                        }
+                        _ => {
+                            // else block
+                            s.push_str(" nahoy { ");
+                            s.push_str(&format!("{}", alt_expr));
+                            s.push_str(" }");
+                        }
                     }
-                    s.push_str(" }");
                 }
+
                 write!(f, "{}", s)
             }
+
             Expression::FunctionLiteral { parameters, body } => {
                 let params: Vec<String> = parameters.iter().map(|p| format!("{}", p)).collect();
                 let mut s = format!("fn({}) {{ ", params.join(", "));
@@ -96,6 +116,7 @@ impl fmt::Display for Expression {
                 s.push_str(" }");
                 write!(f, "{}", s)
             }
+
             Expression::Call { function, arguments } => {
                 let args: Vec<String> = arguments.iter().map(|a| format!("{}", a)).collect();
                 write!(f, "{}({})", function, args.join(", "))

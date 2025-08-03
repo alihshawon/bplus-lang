@@ -1,7 +1,5 @@
 // compiler/src/main.rs
 
-// compiler/src/main.rs
-
 mod ast;
 mod environment;
 mod evaluator;
