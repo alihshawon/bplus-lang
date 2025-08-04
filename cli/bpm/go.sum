@@ -1,0 +1,3 @@
+// cli/bpm/go.sum
+github.com/spf13/cobra v1.7.0 h1:vxJP8+bnjGijFPTxvMpoe0E3UqFh4X3R0DYgJq9b+nRU=
+github.com/spf13/cobra v1.7.0/go.mod h1:mA7F0e3Vu/vIEc7Fkh8RENYcGq8ncvV7NwzFf+K3QlI=

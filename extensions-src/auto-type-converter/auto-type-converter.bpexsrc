@@ -1,0 +1,69 @@
+/* 
+[EXTENSION INFO]
+Name: Auto Type Converter
+ID: auto-typecast
+Type: runtime
+Version: 1.0.0
+Author: B+ Language Team
+Description: Automatically converts incompatible variable types intelligently during runtime.
+*/
+
+// === Start of Extension Logic ===
+
+/*
+This extension activates during expression evaluation.
+It checks for type mismatches and tries to auto-convert values intelligently.
+If conversion fails, it falls back to the default B+ runtime error.
+*/
+
+fn auto_type_convert(left: &Object, right: &Object) -> (Object, Object) {
+    match (left, right) {
+        // Int + String -> Int + Int (attempt String to Int)
+        (Object::Integer(l), Object::Str(r)) => {
+            if let Ok(parsed) = r.parse::<i64>() {
+                return (Object::Integer(*l), Object::Integer(parsed));
+            }
+        }
+        (Object::Str(l), Object::Integer(r)) => {
+            if let Ok(parsed) = l.parse::<i64>() {
+                return (Object::Integer(parsed), Object::Integer(*r));
+            }
+        }
+
+        // Float + Int → Float + Float
+        (Object::Float(l), Object::Integer(r)) => {
+            return (Object::Float(*l), Object::Float(*r as f64));
+        }
+        (Object::Integer(l), Object::Float(r)) => {
+            return (Object::Float(*l as f64), Object::Float(*r));
+        }
+
+        // Boolean to Integer
+        (Object::Boolean(l), Object::Integer(r)) => {
+            return (Object::Integer(if *l { 1 } else { 0 }), Object::Integer(*r));
+        }
+        (Object::Integer(l), Object::Boolean(r)) => {
+            return (Object::Integer(*l), Object::Integer(if *r { 1 } else { 0 }));
+        }
+
+        // Add more rules here as needed...
+        _ => {}
+    }
+    (left.clone(), right.clone()) // fallback to original if no rule matched
+}
+
+// === End of Extension Logic ===
+
+/*
+[USAGE INSTRUCTION]
+To enable this extension, place `auto-typecast.bpex` into your `/extensions` directory.
+
+To disable it, simply remove or rename the `.bpex` file or mark it as disabled in `extensions-src/extensions.config`.
+
+[EXAMPLE]
+    x = "42"
+    y = 10
+    print(x + y)   // Output: 52   (String "42" converted to Integer 42)
+
+This conversion is handled silently and intelligently by this extension.
+*/
