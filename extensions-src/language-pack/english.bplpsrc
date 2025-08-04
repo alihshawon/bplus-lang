@@ -1,0 +1,92 @@
+# ==============================
+# B+ Language Pack Source File
+# Language: English
+# Version: 1.0
+# Author: Ali H Shawon
+# ==============================
+
+# START METADATA
+[metadata]
+language = English
+version = 1.0
+author = Ali H Shawon
+description = Welcome to B+ Language.
+              You are using English Language Pack.
+              You can use English keywords alongside Bangla as well.
+              Try writing conditions like `if`, `then`, `else`.
+
+# Controls whether compiler shows this message on start
+display_message = true
+# END METADATA
+
+# START INSTRUCTIONS
+# Instructions for enabling/disabling language pack:
+# -----------------------------------------------
+# Enable: Place this pack file in the 'extensions/language-packs/' folder
+#         and configure compiler to load it (default behavior).
+#
+# Disable: Remove this file from the folder or
+#          set 'load_language_packs = false' in compiler config.
+# END INSTRUCTIONS
+
+# START TOKEN MAPPINGS
+[mapping]
+
+# Conditional statements
+jodi => if
+tahole => then
+nahoy => else
+nahoy jodi => else if
+
+# Variable declaration
+dhoro => let
+kaj => function
+fn => function
+
+# Boolean literals
+ha => true
+thik => true
+sotti => true
+na => false
+mitthe => false
+mitha => false
+
+# Logical operators
+ebong => and
+and => and
+ba => or
+or => or
+
+# Flow control
+ferot => return
+ferotkoro => return
+dekhao => print
+print => print
+chhapiye dao => print
+
+input => input
+nau => input
+naw => input
+neowa => input
+
+shomoy => time
+time => time
+somoy => time
+
+# Comments
+// => //
+# => #
+/* => /*
+*/ => */
+
+# Loop constructs
+jotokhon => while
+age koro => do
+jonno => for
+protitar jonno => foreach
+choluk => infinite_loop
+thamo => break
+bhango => break
+jekhane => where
+protibar => each_time
+# END TOKEN MAPPINGS
