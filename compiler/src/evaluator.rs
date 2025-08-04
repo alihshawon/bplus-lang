@@ -3,8 +3,6 @@
 use crate::ast::{Expression, Program, Statement};
 use crate::environment::Environment;
 use crate::object::{BuiltinFunction, Object};
-use chrono::Local;
-use std::io::{self, Write};
 use std::panic;
 
 pub fn eval(node: Program, env: &mut Environment) -> Object {
@@ -43,6 +41,8 @@ fn eval_statement(statement: Statement, env: &mut Environment) -> Object {
             }
             Object::ReturnValue(Box::new(val))
         }
+        Statement::CommentSingleLine { .. } => Object::Null,
+        Statement::CommentMultiLine { .. } => Object::Null,
     }
 }
 

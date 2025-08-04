@@ -49,7 +49,7 @@ impl Parser {
         p.register_prefix(TokenType::Ha, Self::parse_boolean);
         p.register_prefix(TokenType::Na, Self::parse_boolean);
         p.register_prefix(TokenType::Jodi, Self::parse_if_expression);
-        p.register_prefix(TokenType::Dekhao, Self::parse_expression_statement_statement); // Use correct method
+        p.register_prefix(TokenType::Dekhao, Self::parse_print_expression);
         p.register_prefix(TokenType::LParen, Self::parse_grouped_expression);
         p.register_prefix(TokenType::Function, Self::parse_function_literal);
 
@@ -186,6 +186,19 @@ impl Parser {
         self.next_token();
         let right = self.parse_expression(Precedence::PREFIX)?;
         Some(Expression::Prefix { operator, right: Box::new(right) })
+    }
+
+    fn parse_print_expression(&mut self) -> Option<Expression> {
+        self.next_token(); // consume 'dekhao'
+        
+        // Parse the expression to print
+        let expr = self.parse_expression(Precedence::LOWEST)?;
+        
+        // Return a Call expression that represents print functionality
+        Some(Expression::Call {
+            function: Box::new(Expression::Identifier("dekhao".to_string())),
+            arguments: vec![expr],
+        })
     }
 
     fn parse_grouped_expression(&mut self) -> Option<Expression> {
