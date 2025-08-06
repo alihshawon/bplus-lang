@@ -24,6 +24,7 @@ pub fn eval(node: Program, env: &mut Environment) -> Object {
 fn eval_statement(statement: Statement, env: &mut Environment) -> Object {
     match statement {
         Statement::ExpressionStatement { expression } => eval_expression(expression, env),
+
         Statement::Let { name, value } => {
             let val = eval_expression(value, env);
             if is_error(&val) {
@@ -34,6 +35,7 @@ fn eval_statement(statement: Statement, env: &mut Environment) -> Object {
             }
             Object::Null
         }
+
         Statement::Return { return_value } => {
             let val = eval_expression(return_value, env);
             if is_error(&val) {
@@ -41,10 +43,66 @@ fn eval_statement(statement: Statement, env: &mut Environment) -> Object {
             }
             Object::ReturnValue(Box::new(val))
         }
+
         Statement::CommentSingleLine { .. } => Object::Null,
+
         Statement::CommentMultiLine { .. } => Object::Null,
+
+        // Added arms:
+
+        Statement::While { condition, body } => {
+            while is_truthy(&eval_expression(condition.clone(), env)) {
+                let result = eval_block_statement(body.clone(), env);
+                match result {
+                    Object::ReturnValue(_) | Object::Error(_) => return result,
+                    _ => {}
+                }
+            }
+            Object::Null
+        }
+
+        Statement::For { init, condition, update, body } => {
+            if let Some(init_stmt) = init {
+                let result = eval_statement(*init_stmt, env);
+                if is_error(&result) {
+                    return result;
+                }
+            }
+
+            while match &condition {
+                Some(cond_expr) => is_truthy(&eval_expression(cond_expr.clone(), env)),
+                None => true,
+            } {
+                let result = eval_block_statement(body.clone(), env);
+                match result {
+                    Object::ReturnValue(_) | Object::Error(_) => return result,
+                    _ => {}
+                }
+
+                if let Some(ref upd_expr) = update {
+                    let result = eval_expression(upd_expr.clone(), env);
+                    if is_error(&result) {
+                        return result;
+                    }
+                }
+            }
+
+            Object::Null
+        }
+
+
+        Statement::Break => {
+            // TODO: Implement break logic properly later
+            Object::Null
+        }
+
+        Statement::Continue => {
+            // TODO: Implement continue logic properly later
+            Object::Null
+        }
     }
 }
+
 
 fn eval_block_statement(statements: Vec<Statement>, env: &mut Environment) -> Object {
     let mut result = Object::Null;

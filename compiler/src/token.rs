@@ -59,7 +59,7 @@ pub enum TokenType {
     Ba,
     Ferot,
     Dekhao,
-    Input,
+    InputNao,
     Shomoy,
 
     // Comment base tokens
@@ -146,7 +146,7 @@ impl fmt::Display for TokenType {
             TokenType::Ebong => "ebong",
             TokenType::Ferot => "ferot",
             TokenType::Dekhao => "dekhao",
-            TokenType::Input => "input",
+            TokenType::InputNao => "inputnao",
             TokenType::Shomoy => "shomoy",
 
             TokenType::EkLineMontobbo => "EkLineMontobbo",
@@ -232,10 +232,11 @@ static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     map.insert("chhapiye dao", TokenType::Dekhao);
 
     // Input variants
-    map.insert("input", TokenType::Input);
-    map.insert("nau", TokenType::Input);
-    map.insert("naw", TokenType::Input);
-    map.insert("neowa", TokenType::Input);
+    map.insert("input", TokenType::InputNao);
+    map.insert("inputnao", TokenType::InputNao);
+
+
+
 
     // Time variants
     map.insert("shomoy", TokenType::Shomoy);

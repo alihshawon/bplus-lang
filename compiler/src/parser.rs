@@ -52,6 +52,8 @@ impl Parser {
         p.register_prefix(TokenType::Dekhao, Self::parse_print_expression);
         p.register_prefix(TokenType::LParen, Self::parse_grouped_expression);
         p.register_prefix(TokenType::Function, Self::parse_function_literal);
+        p.register_prefix(TokenType::InputNao, Self::parse_input_expression);
+
 
         // Register infix parsing functions
         p.register_infix(TokenType::Plus, Self::parse_infix_expression);
@@ -70,6 +72,24 @@ impl Parser {
         p.next_token();
         p
     }
+
+
+    fn parse_input_expression(&mut self) -> Option<Expression> {
+        let function_name = self.cur_token.literal.clone();
+
+        if !self.expect_peek(TokenType::LParen) {
+            self.errors.push(format!("expected '(' after '{}'", function_name));
+            return None;
+        }
+
+        let args = self.parse_call_arguments()?;
+
+        Some(Expression::Call {
+            function: Box::new(Expression::Identifier(function_name)),
+            arguments: args,
+        })
+    }
+
 
     fn next_token(&mut self) {
         self.cur_token = self.peek_token.clone();

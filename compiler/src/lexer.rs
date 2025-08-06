@@ -23,20 +23,14 @@ impl Lexer {
 
     fn read_char(&mut self) {
         if self.read_position >= self.input.len() {
-            self.ch = 0; // NUL character to signify EOF
+            self.ch = 0; // EOF
         } else {
-            // Check if current position points to a Bengali unicode letter (3 bytes)
-            if self.is_unicode_bengali_letter() {
-                // We will read only the first byte here for lexer 'ch'
-                // But actual identifier reading reads the full string
-                self.ch = self.input.as_bytes()[self.position];
-            } else {
-                self.ch = self.input.as_bytes()[self.read_position];
-            }
+            self.ch = self.input.as_bytes()[self.read_position];
         }
         self.position = self.read_position;
         self.read_position += 1;
     }
+
 
     fn peek_char(&self) -> u8 {
         if self.read_position >= self.input.len() {
@@ -166,11 +160,36 @@ impl Lexer {
             b'.' => Token::new(TokenType::Fullstop, "."), // <-- Added line for fullstop token
 
             // Identifiers: ASCII letters, underscore, or Bengali unicode letters
-            _ if self.ch.is_ascii_alphabetic() || self.ch == b'_' || self.is_unicode_bengali_letter() => {
-                let literal = self.read_identifier();
-                let token_type = lookup_ident(&literal);
-                return Token::new(token_type, &literal);
+ _ if self.ch.is_ascii_alphabetic() || self.ch == b'_' || self.is_unicode_bengali_letter() => {
+    let first_literal = self.read_identifier();
+
+    if first_literal == "input" {
+        self.skip_whitespace();
+
+        // Save lexer state to rewind if next word is not "nao"
+        let saved_position = self.position;
+        let saved_read_position = self.read_position;
+        let saved_ch = self.ch;
+
+        if self.ch.is_ascii_alphabetic() || self.ch == b'_' || self.is_unicode_bengali_letter() {
+            let second_literal = self.read_identifier();
+
+            if second_literal == "nao" {
+                return Token::new(TokenType::InputNao, "input nao");
+            } else {
+                // rewind lexer state if not matched
+                self.position = saved_position;
+                self.read_position = saved_read_position;
+                self.ch = saved_ch;
             }
+        }
+    }
+
+    let token_type = lookup_ident(&first_literal);
+    return Token::new(token_type, &first_literal);
+}
+
+
             b'0'..=b'9' => {
                 let literal = self.read_number();
                 return Token::new(TokenType::Int, &literal);

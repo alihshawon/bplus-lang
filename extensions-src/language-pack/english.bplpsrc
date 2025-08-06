@@ -2,34 +2,24 @@
 # B+ Language Pack Source File
 # Language: English
 # Version: 1.0
-# Author: Ali H Shawon
+# Author: B+ Language Team
 # ==============================
 
 # START METADATA
 [metadata]
 language = English
 version = 1.0
-author = Ali H Shawon
+author = B+ Language Team
 description = Welcome to B+ Language.
               You are using English Language Pack.
-              You can use English keywords alongside Bangla as well.
+              You can use English keywords alongside Banglish as well.
               Try writing conditions like `if`, `then`, `else`.
 
 # Controls whether compiler shows this message on start
 display_message = true
 # END METADATA
 
-# START INSTRUCTIONS
-# Instructions for enabling/disabling language pack:
-# -----------------------------------------------
-# Enable: Place this pack file in the 'extensions/language-packs/' folder
-#         and configure compiler to load it (default behavior).
-#
-# Disable: Remove this file from the folder or
-#          set 'load_language_packs = false' in compiler config.
-# END INSTRUCTIONS
-
-# START TOKEN MAPPINGS
+# START KEYWORD MAPPINGS
 [mapping]
 
 # Conditional statements
@@ -62,7 +52,6 @@ ferot => return
 ferotkoro => return
 dekhao => print
 print => print
-chhapiye dao => print
 
 input => input
 nau => input
@@ -73,12 +62,6 @@ shomoy => time
 time => time
 somoy => time
 
-# Comments
-// => //
-# => #
-/* => /*
-*/ => */
-
 # Loop constructs
 jotokhon => while
 age koro => do
@@ -87,6 +70,39 @@ protitar jonno => foreach
 choluk => infinite_loop
 thamo => break
 bhango => break
-jekhane => where
-protibar => each_time
-# END TOKEN MAPPINGS
+# END KEYWORD MAPPINGS
+
+# START ERROR MESSAGES
+[error_messages]
+
+# Lexer errors
+unexpected_character = Unexpected character '{0}' found
+unterminated_string = Unterminated string - missing quote mark
+unterminated_comment = Unterminated comment - missing closing delimiter
+invalid_number = Invalid number '{0}' - please write a valid number
+
+# Parser errors
+unexpected_token = Expected '{1}' but got '{0}'
+missing_token = Missing token '{0}' - please add it
+invalid_expression = Invalid expression: {0}
+invalid_statement = Invalid statement: {0}
+
+# Type errors
+type_mismatch = Type mismatch - expected '{0}' but got '{1}'
+undefined_variable = Undefined variable '{0}' - declare it first
+undefined_function = Undefined function '{0}' - check the name
+wrong_argument_count = Wrong argument count - expected {0}, got {1}
+
+# Runtime errors
+division_by_zero = Cannot divide by zero
+index_out_of_bounds = Index {0} out of bounds (max {1})
+file_not_found = File '{0}' not found
+permission_denied = Permission denied for '{0}'
+network_error = Network error: {0}
+
+# System errors
+out_of_memory = Out of memory
+stack_overflow = Stack overflow - too many recursive calls
+internal_error = Internal error: {0}
+
+# END ERROR MESSAGES

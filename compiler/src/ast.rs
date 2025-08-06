@@ -23,7 +23,20 @@ pub enum Statement {
     CommentMultiLine {
         content: String,
     },
+    While {
+        condition: Expression,
+        body: Vec<Statement>,
+    },
+    For {
+        init: Option<Box<Statement>>,
+        condition: Option<Expression>,
+        update: Option<Expression>,
+        body: Vec<Statement>,
+    },
+    Break,
+    Continue,
 }
+
 
 impl fmt::Display for Statement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -33,9 +46,44 @@ impl fmt::Display for Statement {
             Statement::ExpressionStatement { expression } => write!(f, "{}", expression),
             Statement::CommentSingleLine { content } => write!(f, "//{}", content),
             Statement::CommentMultiLine { content } => write!(f, "/*{}*/", content),
+            Statement::While { condition, body } => {
+                let mut s = format!("jotokhon {} {{ ", condition);
+                for stmt in body {
+                    s.push_str(&format!("{}", stmt));
+                }
+                s.push_str(" }");
+                write!(f, "{}", s)
+            }
+            Statement::For { init, condition, update, body } => {
+                let mut s = String::from("jonno (");
+
+                if let Some(init) = init {
+                    s.push_str(&format!("{}", init));
+                }
+                s.push_str("; ");
+
+                if let Some(cond) = condition {
+                    s.push_str(&format!("{}", cond));
+                }
+                s.push_str("; ");
+
+                if let Some(upd) = update {
+                    s.push_str(&format!("{}", upd));
+                }
+                s.push_str(") { ");
+
+                for stmt in body {
+                    s.push_str(&format!("{}", stmt));
+                }
+                s.push_str(" }");
+                write!(f, "{}", s)
+            }
+            Statement::Break => write!(f, "thamo;"),
+            Statement::Continue => write!(f, "choluk;"),
         }
     }
 }
+
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
@@ -124,3 +172,4 @@ impl fmt::Display for Expression {
         }
     }
 }
+
