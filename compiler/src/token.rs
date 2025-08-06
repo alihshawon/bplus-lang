@@ -1,9 +1,8 @@
-// compiler/src/token.rs
-
-use std::collections::HashMap;
-use once_cell::sync::Lazy;
 use std::fmt;
+use once_cell::sync::Lazy;
+use std::collections::HashMap;
 
+/// The core token types used by the B+ compiler.
 #[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum TokenType {
     Illegal,
@@ -41,7 +40,7 @@ pub enum TokenType {
     LBracket,
     RBracket,
     Fullstop, // .
-    Colon,   // :
+    Colon,    // :
 
     // Keywords
     Function,
@@ -62,7 +61,7 @@ pub enum TokenType {
     InputNao,
     Shomoy,
 
-    // Comment base tokens
+    // Comment tokens
     EkLineMontobbo,
     BohuLineMontobboShuru,
     BohuLineMontobboShesh,
@@ -78,6 +77,7 @@ pub enum TokenType {
     Protibar,
 }
 
+/// Token struct with type and literal value
 #[derive(Debug, PartialEq, Clone)]
 pub struct Token {
     pub token_type: TokenType,
@@ -142,11 +142,11 @@ impl fmt::Display for TokenType {
             TokenType::Noyto => "noyto",
             TokenType::Noile => "noile",
             TokenType::Othoba => "othoba",
-            TokenType::Ba => "ba",
             TokenType::Ebong => "ebong",
+            TokenType::Ba => "ba",
             TokenType::Ferot => "ferot",
             TokenType::Dekhao => "dekhao",
-            TokenType::InputNao => "inputnao",
+            TokenType::InputNao => "input nao",
             TokenType::Shomoy => "shomoy",
 
             TokenType::EkLineMontobbo => "EkLineMontobbo",
@@ -166,11 +166,17 @@ impl fmt::Display for TokenType {
     }
 }
 
+/// Normalize input by lowercasing and collapsing whitespace to single space
 fn normalize_keyword(ident: &str) -> String {
-    ident.to_lowercase().replace(' ', "")
+    ident
+        .to_lowercase()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
-static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
+/// Centralized keyword map with synonyms mapped to their base TokenType
+pub static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     let mut map = HashMap::new();
 
     // Let/Variable declaration variants
@@ -178,7 +184,6 @@ static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     map.insert("dhori", TokenType::Dhoro);
     map.insert("monekori", TokenType::Dhoro);
     map.insert("monekoro", TokenType::Dhoro);
-    map.insert("monekore", TokenType::Dhoro);
 
     // Function variants
     map.insert("kaj", TokenType::Function);
@@ -188,15 +193,21 @@ static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     // Boolean true variants
     map.insert("ha", TokenType::Ha);
     map.insert("thik", TokenType::Ha);
-    map.insert("thikache", TokenType::Ha);
     map.insert("sotti", TokenType::Ha);
+    map.insert("shotti", TokenType::Ha);
     map.insert("true", TokenType::Ha);
+    map.insert("shotto", TokenType::Ha);
+    map.insert("sotto", TokenType::Ha);
 
     // Boolean false variants
     map.insert("na", TokenType::Na);
     map.insert("mitthe", TokenType::Na);
-    map.insert("mitha", TokenType::Na);
+    map.insert("mittha", TokenType::Na);
     map.insert("false", TokenType::Na);
+    map.insert("thik noy", TokenType::Na);
+    map.insert("thiknoy", TokenType::Na);
+    map.insert("vul", TokenType::Na);
+    map.insert("bhul", TokenType::Na);
 
     // If/condition start
     map.insert("jodi", TokenType::Jodi);
@@ -204,6 +215,8 @@ static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     // Condition mid
     map.insert("hoy", TokenType::Hoy);
     map.insert("hoye", TokenType::Hoy);
+    map.insert("hoyethake", TokenType::Hoy);
+    map.insert("hoye thake", TokenType::Hoy);
 
     // Then
     map.insert("tahole", TokenType::Tahole);
@@ -223,20 +236,20 @@ static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
 
     // Return statement
     map.insert("ferot", TokenType::Ferot);
-    map.insert("ferotkoro", TokenType::Ferot);
+    map.insert("ferot koro", TokenType::Ferot);
+    map.insert("return koro", TokenType::Ferot);
     map.insert("return", TokenType::Ferot);
 
     // Print variants
     map.insert("dekhao", TokenType::Dekhao);
     map.insert("print", TokenType::Dekhao);
-    map.insert("chhapiye dao", TokenType::Dekhao);
+    map.insert("show koro", TokenType::Dekhao);
 
-    // Input variants
+    // Input variants (all map to InputNao base token)
+    map.insert("input nao", TokenType::InputNao);
     map.insert("input", TokenType::InputNao);
-    map.insert("inputnao", TokenType::InputNao);
-
-
-
+    map.insert("input nao koro", TokenType::InputNao);
+    map.insert("nibho", TokenType::InputNao);
 
     // Time variants
     map.insert("shomoy", TokenType::Shomoy);
@@ -264,11 +277,11 @@ static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
 
     // Loop keywords
     map.insert("jotokhon", TokenType::Jotokhon);
-    map.insert("agekoro", TokenType::AgeKoro);
     map.insert("age koro", TokenType::AgeKoro);
+    map.insert("agekoro", TokenType::AgeKoro);
     map.insert("jonno", TokenType::Jonno);
-    map.insert("protitarjonno", TokenType::ProtitarJonno);
     map.insert("protitar jonno", TokenType::ProtitarJonno);
+    map.insert("protitarjonno", TokenType::ProtitarJonno);
     map.insert("choluk", TokenType::Choluk);
     map.insert("thamo", TokenType::Thamo);
     map.insert("bhango", TokenType::Thamo);
@@ -278,6 +291,8 @@ static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     map
 });
 
+/// Lookup an identifier or keyword string, normalize it and get corresponding TokenType.
+/// Returns TokenType::Ident if not a keyword.
 pub fn lookup_ident(ident: &str) -> TokenType {
     let normalized = normalize_keyword(ident);
     if let Some(&tok_type) = KEYWORDS.get(normalized.as_str()) {

@@ -160,35 +160,37 @@ impl Lexer {
             b'.' => Token::new(TokenType::Fullstop, "."), // <-- Added line for fullstop token
 
             // Identifiers: ASCII letters, underscore, or Bengali unicode letters
- _ if self.ch.is_ascii_alphabetic() || self.ch == b'_' || self.is_unicode_bengali_letter() => {
-    let first_literal = self.read_identifier();
+            _ if self.ch.is_ascii_alphabetic() || self.ch == b'_' || self.is_unicode_bengali_letter() => {
+                let first_literal = self.read_identifier();
 
-    if first_literal == "input" {
-        self.skip_whitespace();
+                self.skip_whitespace();
 
-        // Save lexer state to rewind if next word is not "nao"
-        let saved_position = self.position;
-        let saved_read_position = self.read_position;
-        let saved_ch = self.ch;
+                // Save lexer state to rewind if multi-word keyword doesn't match
+                let saved_position = self.position;
+                let saved_read_position = self.read_position;
+                let saved_ch = self.ch;
 
-        if self.ch.is_ascii_alphabetic() || self.ch == b'_' || self.is_unicode_bengali_letter() {
-            let second_literal = self.read_identifier();
+                let mut multi_word_literal = first_literal.clone();
 
-            if second_literal == "nao" {
-                return Token::new(TokenType::InputNao, "input nao");
-            } else {
-                // rewind lexer state if not matched
-                self.position = saved_position;
-                self.read_position = saved_read_position;
-                self.ch = saved_ch;
+                if self.ch.is_ascii_alphabetic() || self.ch == b'_' || self.is_unicode_bengali_letter() {
+                    let second_literal = self.read_identifier();
+                    multi_word_literal = format!("{} {}", multi_word_literal, second_literal);
+
+                    // Check if multi-word literal matches a known token type
+                    let token_type = lookup_ident(&multi_word_literal);
+                    if token_type != TokenType::Ident {
+                        return Token::new(token_type, &multi_word_literal);
+                    } else {
+                        // rewind if not matched
+                        self.position = saved_position;
+                        self.read_position = saved_read_position;
+                        self.ch = saved_ch;
+                    }
+                }
+
+                let token_type = lookup_ident(&first_literal);
+                return Token::new(token_type, &first_literal);
             }
-        }
-    }
-
-    let token_type = lookup_ident(&first_literal);
-    return Token::new(token_type, &first_literal);
-}
-
 
             b'0'..=b'9' => {
                 let literal = self.read_number();
@@ -301,4 +303,3 @@ impl Lexer {
         bytes[0] == 0xE0 && (0xA6..=0xAF).contains(&bytes[1]) && (0x80..=0xBF).contains(&bytes[2])
     }
 }
-

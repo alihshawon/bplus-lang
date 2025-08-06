@@ -78,8 +78,8 @@ fn main() {
                     println!("{}", example);
                 }
             } else {
-                println!("B+ te apnake svagatam!");
-                println!("Apni ekhon default Banglish keywords bebhar korte paren.");
+                println!("B+ e Apnake Shagotom!");
+                println!("Apni Phonetic Bangla keywords babohar korte parben.");
                 println!("Cheshta korun: jodi (10 > 5) {{ dekhao(\"10 is greater than 5!\") }}");
             }
         }
