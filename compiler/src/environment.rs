@@ -1,20 +1,36 @@
 // compiler/src/environment.rs
 
+// === IMPORTS ===
+// Importing 'Object' type from object.rs file
 use crate::object::Object;
-use std::collections::HashMap;
-use std::io::{self, Write}; // For real user input
 
+// Using standard HashMap for variable bindings
+use std::collections::HashMap;
+
+// For handling user input and flushing output
+use std::io::{self, Write};
+
+
+// === ENVIRONMENT STRUCTURE ===
+// The Environment holds variable and function bindings.
+// It can have an optional outer environment (for nested scopes).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Environment {
-    store: HashMap<String, Object>,
-    outer: Option<Box<Environment>>,
+    store: HashMap<String, Object>,           // Variable/function storage
+    outer: Option<Box<Environment>>,          // Optional parent environment (for closures, scopes)
 }
 
+
+// === ENVIRONMENT IMPLEMENTATION START ===
 impl Environment {
+
+    // === FUNCTION: new ===
+    // Creates a new root environment with builtin functions preloaded
     pub fn new() -> Environment {
         let mut store = HashMap::new();
 
-        // 'dekhao' builtin function
+        // === BUILTIN: dekhao ===
+        // A native print-like function that prints one argument
         store.insert(
             "dekhao".to_string(),
             Object::BuiltinNative(|args| {
@@ -29,7 +45,8 @@ impl Environment {
             }),
         );
 
-        // 'input' builtin function with real input reading
+        // === BUILTIN: input ===
+        // Asks the user for input with optional prompt message
         store.insert(
             "input".to_string(),
             Object::BuiltinNative(|args| {
@@ -39,7 +56,7 @@ impl Environment {
                     "".to_string()
                 };
 
-                // Debug line - remove after testing
+                // Debugging line (can be removed in production)
                 println!("DEBUG: input prompt to print: '{}'", prompt);
 
                 print!("{}", prompt);
@@ -54,7 +71,8 @@ impl Environment {
         );
 
 
-        // 'shomoy' builtin function with better formatting
+        // === BUILTIN: shomoy ===
+        // Returns current time/date/timestamp in different formats
         store.insert(
             "shomoy".to_string(),
             Object::BuiltinNative(|args| {
@@ -77,7 +95,9 @@ impl Environment {
             }),
         );
 
-        // File reading function
+
+        // === BUILTIN: readkoro ===
+        // Reads content of a file (filename must be provided)
         store.insert(
             "readkoro".to_string(),
             Object::BuiltinNative(|args| {
@@ -95,7 +115,9 @@ impl Environment {
             }),
         );
 
-        // File writing function
+
+        // === BUILTIN: writekoro ===
+        // Writes string content into a file (filename + content required)
         store.insert(
             "writekoro".to_string(),
             Object::BuiltinNative(|args| {
@@ -116,7 +138,9 @@ impl Environment {
             }),
         );
 
-        // 'shuru_koro' builtin function
+
+        // === BUILTIN: shuru_koro ===
+        // Prints a restart message (does not actually restart the program)
         store.insert(
             "shuru_koro".to_string(),
             Object::BuiltinNative(|_args| {
@@ -125,7 +149,9 @@ impl Environment {
             }),
         );
 
-        // 'bondho_koro' builtin function
+
+        // === BUILTIN: bondho_koro ===
+        // Prints a shutdown message (does not actually terminate program)
         store.insert(
             "bondho_koro".to_string(),
             Object::BuiltinNative(|_args| {
@@ -134,7 +160,9 @@ impl Environment {
             }),
         );
 
-        // exitkoro builtin function
+
+        // === BUILTIN: exitkoro ===
+        // Terminates the program with optional exit code
         store.insert(
             "exitkoro".to_string(),
             Object::BuiltinNative(|args| {
@@ -152,9 +180,13 @@ impl Environment {
             }),
         );
 
+        // Return the final environment with all built-ins loaded
         Environment { store, outer: None }
     }
 
+
+    // === FUNCTION: new_enclosed ===
+    // Creates a new inner (child) environment with a parent scope
     pub fn new_enclosed(outer: Environment) -> Environment {
         Environment {
             store: HashMap::new(),
@@ -162,6 +194,9 @@ impl Environment {
         }
     }
 
+
+    // === FUNCTION: get ===
+    // Retrieves a value by name from the current or outer environment
     pub fn get(&self, name: &str) -> Option<Object> {
         match self.store.get(name) {
             Some(obj) => Some(obj.clone()),
@@ -169,16 +204,26 @@ impl Environment {
         }
     }
 
+
+    // === FUNCTION: set ===
+    // Sets a variable in the current environment
     pub fn set(&mut self, name: String, val: Object) -> Object {
         self.store.insert(name, val.clone());
         val
     }
 
+
+    // === FUNCTION: has_builtin ===
+    // Checks whether a builtin or variable exists in the current environment
     pub fn has_builtin(&self, name: &str) -> bool {
         self.store.contains_key(name)
     }
 
+
+    // === FUNCTION: add_builtin ===
+    // Manually adds a new builtin function to the environment
     pub fn add_builtin(&mut self, name: String, func: Object) {
         self.store.insert(name, func);
     }
 }
+// === ENVIRONMENT IMPLEMENTATION END ===

@@ -6,55 +6,58 @@ use std::fs;
 use std::path::Path;
 
 pub struct ExtensionManager {
-    language_packs: HashMap<String, LanguagePack>,
-    active_language_pack: Option<String>,
-    extensions_path: String,
-    error_manager: ErrorManager,
+    language_packs: HashMap<String, LanguagePack>, // Stores loaded language packs by name
+    active_language_pack: Option<String>,          // Currently active language pack name
+    extensions_path: String,                        // Root path where extensions are stored
+    error_manager: ErrorManager,                    // Manages error messages according to active language
 }
 
 impl ExtensionManager {
+    // Create a new ExtensionManager with given extensions directory path
     pub fn new(extensions_path: &str) -> Self {
         ExtensionManager {
             language_packs: HashMap::new(),
             active_language_pack: None,
             extensions_path: extensions_path.to_string(),
-            error_manager: ErrorManager::new(), // Default Bangla
+            error_manager: ErrorManager::new(), // Initialize default error manager (Bangla)
         }
     }
     
+    // Initialize the extension manager: create directories, load language packs and config
     pub fn initialize(&mut self) -> Result<(), String> {
-        // 1. Check if extensions directory exists
+        // 1. Check if extensions directory exists; create if missing
         if !Path::new(&self.extensions_path).exists() {
-            // Create extensions directory structure
             self.create_extension_directories()?;
         }
         
-        // 2. Load language packs
+        // 2. Load all available language packs from disk
         self.load_language_packs()?;
         
-        // 3. Load configuration and set active language pack
+        // 3. Load extensions configuration and activate configured language pack
         self.load_extension_config()?;
         
         Ok(())
     }
     
+    // Create required directory structure and default configuration file
     fn create_extension_directories(&self) -> Result<(), String> {
         let base_path = Path::new(&self.extensions_path);
         
-        // Create directory structure
+        // List of directories to create under extensions path
         let dirs = [
             "language-packs",
             "runtime-extensions",
             "compiler-plugins",
         ];
         
+        // Create each directory and handle possible errors
         for dir in &dirs {
             let dir_path = base_path.join(dir);
             fs::create_dir_all(&dir_path)
                 .map_err(|e| format!("Failed to create directory {:?}: {}", dir_path, e))?;
         }
         
-        // Create default extensions.config
+        // Create default extensions.config file if it doesn't exist
         let config_path = base_path.join("extensions.config");
         if !config_path.exists() {
             let default_config = r#"# B+ Language Extensions Configuration
@@ -84,6 +87,7 @@ auto_typecast = { enabled = false, priority = 1 }
         Ok(())
     }
     
+    // Load language packs from the "language-packs" directory
     fn load_language_packs(&mut self) -> Result<(), String> {
         let packs_dir = Path::new(&self.extensions_path).join("language-packs");
         
@@ -96,7 +100,7 @@ auto_typecast = { enabled = false, priority = 1 }
                 
                 if let Some(extension) = path.extension() {
                     if extension == "bplp" {
-                        // Load compiled language pack
+                        // Load compiled language pack files (.bplp)
                         if let Some(name) = path.file_stem().and_then(|s| s.to_str()) {
                             match self.load_compiled_language_pack(&path) {
                                 Ok(pack) => {
@@ -109,7 +113,7 @@ auto_typecast = { enabled = false, priority = 1 }
                             }
                         }
                     } else if extension == "bplpsrc" {
-                        // Compile source and load
+                        // Compile source language pack files (.bplpsrc) and load
                         if let Some(name) = path.file_stem().and_then(|s| s.to_str()) {
                             match self.compile_and_load_language_pack(&path) {
                                 Ok(pack) => {
@@ -129,21 +133,22 @@ auto_typecast = { enabled = false, priority = 1 }
         Ok(())
     }
     
+    // Load a compiled language pack from a .bplp file (placeholder implementation)
     fn load_compiled_language_pack(&self, path: &Path) -> Result<LanguagePack, String> {
-        // For now, we'll implement a simple text-based format
-        // In production, this would be a proper binary format
+        // Read the file content as text
         let content = fs::read_to_string(path)
             .map_err(|e| format!("Failed to read language pack file: {}", e))?;
         
+        // Check for expected header in compiled file
         if content.starts_with("// Compiled Binery File for B Plus Language") {
-            // This is a placeholder compiled file
-            // For now, we'll use English as default for .bplp files
+            // Return a default English language pack for now
             Ok(self.create_english_language_pack())
         } else {
             Err("Invalid language pack format".to_string())
         }
     }
     
+    // Compile and load a language pack from source (.bplpsrc)
     fn compile_and_load_language_pack(&self, path: &Path) -> Result<LanguagePack, String> {
         let content = fs::read_to_string(path)
             .map_err(|e| format!("Failed to read language pack source: {}", e))?;
@@ -151,6 +156,7 @@ auto_typecast = { enabled = false, priority = 1 }
         self.parse_language_pack_source(&content)
     }
     
+    // Parse language pack source text and extract metadata, keyword mappings, and error messages
     fn parse_language_pack_source(&self, content: &str) -> Result<LanguagePack, String> {
         let mut language = String::new();
         let mut version = String::new();
@@ -163,18 +169,18 @@ auto_typecast = { enabled = false, priority = 1 }
         for line in content.lines() {
             let line = line.trim();
             
-            // Skip comments and empty lines
+            // Skip comments and blank lines
             if line.starts_with('#') || line.is_empty() {
                 continue;
             }
             
-            // Section headers
+            // Detect section headers like [metadata], [mapping], [error_messages]
             if line.starts_with('[') && line.ends_with(']') {
                 current_section = line[1..line.len()-1].to_string();
                 continue;
             }
             
-            // Parse key-value pairs
+            // Parse key=value pairs inside sections
             if let Some(eq_pos) = line.find('=') {
                 let key = line[..eq_pos].trim();
                 let value = line[eq_pos+1..].trim();
@@ -189,7 +195,7 @@ auto_typecast = { enabled = false, priority = 1 }
                         }
                     }
                     "mapping" => {
-                        // Parse keyword mappings like "jodi => if"
+                        // Parse keyword mappings formatted like "jodi => if"
                         if let Some(arrow_pos) = value.find("=>") {
                             let from_key = value[..arrow_pos].trim().to_string();
                             let to_key = value[arrow_pos+2..].trim().to_string();
@@ -197,7 +203,7 @@ auto_typecast = { enabled = false, priority = 1 }
                         }
                     }
                     "error_messages" => {
-                        // Parse error message templates
+                        // Parse error message templates keyed by error code
                         error_templates.insert(key.to_string(), value.to_string());
                     }
                     _ => {}
@@ -205,11 +211,12 @@ auto_typecast = { enabled = false, priority = 1 }
             }
         }
         
-        // Add default English error messages if not provided in source
+        // If no error messages were defined, use default English error messages
         if error_templates.is_empty() {
             error_templates = self.get_english_error_templates();
         }
         
+        // Return the constructed LanguagePack struct
         Ok(LanguagePack {
             language,
             version,
@@ -219,6 +226,7 @@ auto_typecast = { enabled = false, priority = 1 }
         })
     }
     
+    // Provide default English error message templates
     fn get_english_error_templates(&self) -> HashMap<String, String> {
         let mut templates = HashMap::new();
         
@@ -232,40 +240,44 @@ auto_typecast = { enabled = false, priority = 1 }
             "Undefined variable '{0}' - declare it first".to_string());
         templates.insert("division_by_zero".to_string(), 
             "Cannot divide by zero".to_string());
-        // Add more templates as needed...
+        // More templates can be added here as needed
         
         templates
     }
     
-    
+    // Load extension configuration from extensions.config file
     fn load_extension_config(&mut self) -> Result<(), String> {
         let config_path = Path::new(&self.extensions_path).join("extensions.config");
         
+        // If config file does not exist, return without error (use defaults)
         if !config_path.exists() {
-            return Ok(()); // No config, use defaults
+            return Ok(());
         }
         
+        // Read the config file content
         let content = fs::read_to_string(&config_path)
             .map_err(|e| format!("Failed to read extensions.config: {}", e))?;
         
-        // Parse TOML-like config (simplified parsing)
+        // Simplified parsing for language_packs section to find enabled pack
         let mut in_language_packs = false;
         
         for line in content.lines() {
             let line = line.trim();
             
+            // Detect start of [language_packs] section
             if line.starts_with('[') {
                 in_language_packs = line == "[language_packs]";
                 continue;
             }
             
+            // If inside language_packs section, check for enabled = true lines
             if in_language_packs && line.contains("enabled = true") {
-                // Extract language pack name
                 if let Some(eq_pos) = line.find('=') {
                     let pack_name = line[..eq_pos].trim();
                     if self.language_packs.contains_key(pack_name) {
+                        // Activate the language pack and stop searching
                         self.activate_language_pack(pack_name)?;
-                        break; // Only one language pack can be active
+                        break;
                     }
                 }
             }
@@ -274,6 +286,7 @@ auto_typecast = { enabled = false, priority = 1 }
         Ok(())
     }
     
+    // Activate a language pack by name, updating error manager and state
     pub fn activate_language_pack(&mut self, pack_name: &str) -> Result<(), String> {
         if let Some(pack) = self.language_packs.get(pack_name) {
             self.active_language_pack = Some(pack_name.to_string());
@@ -285,10 +298,12 @@ auto_typecast = { enabled = false, priority = 1 }
         }
     }
     
+    // Get reference to current error manager
     pub fn get_error_manager(&self) -> &ErrorManager {
         &self.error_manager
     }
     
+    // Get currently active language pack if any
     pub fn get_active_language_pack(&self) -> Option<&LanguagePack> {
         if let Some(ref pack_name) = self.active_language_pack {
             self.language_packs.get(pack_name)
@@ -297,9 +312,10 @@ auto_typecast = { enabled = false, priority = 1 }
         }
     }
     
+    // Translate a keyword according to active language pack mappings
     pub fn translate_keyword(&self, keyword: &str) -> String {
         if let Some(pack) = self.get_active_language_pack() {
-            // Check if there's a mapping for this keyword
+            // Check direct mapping from source keyword
             if let Some(translated) = pack.keyword_mappings.get(keyword) {
                 return translated.clone();
             }
@@ -310,16 +326,18 @@ auto_typecast = { enabled = false, priority = 1 }
                 }
             }
         }
-        keyword.to_string() // Return original if no translation found
+        // Return original keyword if no translation found
+        keyword.to_string()
     }
     
+    // Check if a keyword is valid under the active language pack
     pub fn is_valid_keyword(&self, keyword: &str) -> bool {
-        // Check if keyword is valid in current language context
         if let Some(pack) = self.get_active_language_pack() {
+            // Valid if either key or value in mapping
             pack.keyword_mappings.contains_key(keyword) || 
             pack.keyword_mappings.values().any(|v| v == keyword)
         } else {
-            // Default Bangla keywords
+            // Default set of Banglish keywords if no pack is active
             matches!(keyword, 
                 "dhoro" | "kaj" | "fn" | "ha" | "na" | "jodi" | "tahole" | 
                 "nahoy" | "dekhao" | "input" | "ferot" | "shomoy" | "thamo"
@@ -327,11 +345,11 @@ auto_typecast = { enabled = false, priority = 1 }
         }
     }
 
-
-fn create_english_language_pack(&self) -> LanguagePack {
+    // Create a default English language pack with keyword mappings and messages
+    fn create_english_language_pack(&self) -> LanguagePack {
         let mut keyword_mappings = HashMap::new();
         
-        // Keyword translations
+        // English translations for Banglish keywords
         keyword_mappings.insert("jodi".to_string(), "if".to_string());
         keyword_mappings.insert("tahole".to_string(), "then".to_string());
         keyword_mappings.insert("nahoy".to_string(), "else".to_string());
@@ -342,7 +360,7 @@ fn create_english_language_pack(&self) -> LanguagePack {
         keyword_mappings.insert("ha".to_string(), "true".to_string());
         keyword_mappings.insert("na".to_string(), "false".to_string());
         
-        // UI Messages in English
+        // UI message translations in English
         keyword_mappings.insert("welcome_message".to_string(), 
             "Welcome to B+! English language pack is active.".to_string());
         keyword_mappings.insert("example_usage".to_string(), 
@@ -373,10 +391,11 @@ fn create_english_language_pack(&self) -> LanguagePack {
         }
     }
     
+    // Create a default Banglish language pack with keyword mappings and messages
     fn create_default_banglish_pack(&self) -> LanguagePack {
         let mut keyword_mappings = HashMap::new();
         
-        // Default Banglish keywords (no translation needed)
+        // Banglish keywords (no translation, same key and value)
         keyword_mappings.insert("jodi".to_string(), "jodi".to_string());
         keyword_mappings.insert("tahole".to_string(), "tahole".to_string());
         keyword_mappings.insert("nahoy".to_string(), "nahoy".to_string());
@@ -387,7 +406,7 @@ fn create_english_language_pack(&self) -> LanguagePack {
         keyword_mappings.insert("ha".to_string(), "ha".to_string());
         keyword_mappings.insert("na".to_string(), "na".to_string());
         
-        // UI Messages in Banglish
+        // UI messages in Banglish
         keyword_mappings.insert("welcome_message".to_string(), 
             "B+ te apnake svagatam!".to_string());
         keyword_mappings.insert("example_usage".to_string(), 
@@ -414,24 +433,23 @@ fn create_english_language_pack(&self) -> LanguagePack {
             version: "1.0".to_string(),
             author: "B+ Language Team".to_string(),
             keyword_mappings,
-            error_templates: HashMap::new(), // Uses default error manager
+            error_templates: HashMap::new(), // Use default error messages from ErrorManager
         }
     }
     
+    // Get a UI message by key, falling back to default Banglish if none active
     pub fn get_message(&self, key: &str) -> String {
         if let Some(pack) = self.get_active_language_pack() {
             pack.keyword_mappings.get(key).cloned()
         } else {
-            // Return default Banglish messages
             let default_pack = self.create_default_banglish_pack();
             default_pack.keyword_mappings.get(key).cloned()
         }.unwrap_or_else(|| format!("Missing message key: {}", key))
     }
-
-
 }
 
 impl Default for ExtensionManager {
+    // Provide default constructor with "extensions" directory path
     fn default() -> Self {
         Self::new("extensions")
     }

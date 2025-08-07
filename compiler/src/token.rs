@@ -1,72 +1,74 @@
+// compiler/src/token.rs
+
 use std::fmt;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 
-/// The core token types used by the B+ compiler.
+/// Enum representing all possible token types recognized by the B+ compiler.
 #[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum TokenType {
-    Illegal,
-    Eof,
+    Illegal,      // Unknown or invalid token
+    Eof,          // End of file/input
 
-    // Identifiers + literals
-    Ident,
-    Int,
-    Float,
-    List,
-    Set,
-    String,
+    // Identifiers and literal types
+    Ident,        // Variable/function names
+    Int,          // Integer literals
+    Float,        // Floating point literals
+    List,         // List literals
+    Set,          // Set literals
+    String,       // String literals
 
     // Operators
-    Assign,
-    Plus,
-    Minus,
-    Bang,
-    Asterisk,
-    Slash,
-    Lt,
-    Gt,
-    Eq,
-    LtEq,
-    GtEq,
-    NotEq,
+    Assign,       // =
+    Plus,         // +
+    Minus,        // -
+    Bang,         // !
+    Asterisk,     // *
+    Slash,        // /
+    Lt,           // <
+    Gt,           // >
+    Eq,           // ==
+    LtEq,         // <=
+    GtEq,         // >=
+    NotEq,        // !=
 
-    // Delimiters
-    Comma,
-    Semicolon,
-    LParen,
-    RParen,
-    LBrace,
-    RBrace,
-    LBracket,
-    RBracket,
-    Fullstop, // .
-    Colon,    // :
+    // Delimiters and punctuation
+    Comma,        // ,
+    Semicolon,    // ;
+    LParen,       // (
+    RParen,       // )
+    LBrace,       // {
+    RBrace,       // }
+    LBracket,     // [
+    RBracket,     // ]
+    Fullstop,     // .
+    Colon,        // :
 
-    // Keywords
-    Function,
-    Dhoro,
-    Ha,
-    Na,
-    Jodi,
-    Hoy,
-    Tahole,
-    Nahoy,
-    Noyto,
-    Noile,
-    Othoba,
-    Ebong,
-    Ba,
-    Ferot,
-    Dekhao,
-    InputNao,
-    Shomoy,
+    // Language keywords (Banglish)
+    Function,     // function keyword
+    Dhoro,        // let/variable declaration
+    Ha,           // true boolean literal
+    Na,           // false boolean literal
+    Jodi,         // if conditional start
+    Hoy,          // condition connector (like "is")
+    Tahole,       // then keyword
+    Nahoy,        // else keyword
+    Noyto,        // else synonym
+    Noile,        // else synonym
+    Othoba,       // or keyword
+    Ebong,        // and keyword
+    Ba,           // or keyword
+    Ferot,        // return keyword
+    Dekhao,       // print keyword
+    InputNao,     // input function keyword
+    Shomoy,       // time keyword
 
-    // Comment tokens
+    // Comment tokens for single and multi-line comments
     EkLineMontobbo,
     BohuLineMontobboShuru,
     BohuLineMontobboShesh,
 
-    // Loop tokens
+    // Loop-related keywords
     Jotokhon,
     AgeKoro,
     Jonno,
@@ -77,7 +79,7 @@ pub enum TokenType {
     Protibar,
 }
 
-/// Token struct with type and literal value
+/// Struct representing a token, consisting of a token type and its literal string.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Token {
     pub token_type: TokenType,
@@ -85,6 +87,7 @@ pub struct Token {
 }
 
 impl Token {
+    /// Constructor to create a new token with given type and literal value.
     pub fn new(token_type: TokenType, literal: &str) -> Self {
         Token {
             token_type,
@@ -94,6 +97,7 @@ impl Token {
 }
 
 impl fmt::Display for TokenType {
+    /// Display token type as string representation (mostly for debugging and error messages).
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
             TokenType::Illegal => "Illegal",
@@ -166,7 +170,7 @@ impl fmt::Display for TokenType {
     }
 }
 
-/// Normalize input by lowercasing and collapsing whitespace to single space
+/// Normalize an input identifier or keyword by converting to lowercase and collapsing whitespace.
 fn normalize_keyword(ident: &str) -> String {
     ident
         .to_lowercase()
@@ -175,17 +179,18 @@ fn normalize_keyword(ident: &str) -> String {
         .join(" ")
 }
 
-/// Centralized keyword map with synonyms mapped to their base TokenType
+/// A map of keyword strings and their synonyms to the canonical TokenType.
+/// This allows multiple natural language variants to map to the same token.
 pub static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     let mut map = HashMap::new();
 
-    // Let/Variable declaration variants
+    // Variable declaration keywords
     map.insert("dhoro", TokenType::Dhoro);
     map.insert("dhori", TokenType::Dhoro);
     map.insert("monekori", TokenType::Dhoro);
     map.insert("monekoro", TokenType::Dhoro);
 
-    // Function variants
+    // Function keywords
     map.insert("kaj", TokenType::Function);
     map.insert("fn", TokenType::Function);
     map.insert("function", TokenType::Function);
@@ -209,16 +214,12 @@ pub static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     map.insert("vul", TokenType::Na);
     map.insert("bhul", TokenType::Na);
 
-    // If/condition start
+    // Condition keywords
     map.insert("jodi", TokenType::Jodi);
-
-    // Condition mid
     map.insert("hoy", TokenType::Hoy);
     map.insert("hoye", TokenType::Hoy);
     map.insert("hoyethake", TokenType::Hoy);
     map.insert("hoye thake", TokenType::Hoy);
-
-    // Then
     map.insert("tahole", TokenType::Tahole);
     map.insert("tobe", TokenType::Tahole);
 
@@ -234,29 +235,29 @@ pub static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     map.insert("ba", TokenType::Ba);
     map.insert("or", TokenType::Ba);
 
-    // Return statement
+    // Return statement variants
     map.insert("ferot", TokenType::Ferot);
     map.insert("ferot koro", TokenType::Ferot);
     map.insert("return koro", TokenType::Ferot);
     map.insert("return", TokenType::Ferot);
 
-    // Print variants
+    // Print statement variants
     map.insert("dekhao", TokenType::Dekhao);
     map.insert("print", TokenType::Dekhao);
     map.insert("show koro", TokenType::Dekhao);
 
-    // Input variants (all map to InputNao base token)
+    // Input variants all mapping to InputNao token
     map.insert("input nao", TokenType::InputNao);
     map.insert("input", TokenType::InputNao);
     map.insert("input nao koro", TokenType::InputNao);
     map.insert("nibho", TokenType::InputNao);
 
-    // Time variants
+    // Time keywords
     map.insert("shomoy", TokenType::Shomoy);
     map.insert("time", TokenType::Shomoy);
     map.insert("somoy", TokenType::Shomoy);
 
-    // Comment base keywords and their variants
+    // Comment tokens with variants
     map.insert("//", TokenType::EkLineMontobbo);
     map.insert("#", TokenType::EkLineMontobbo);
 
@@ -291,8 +292,9 @@ pub static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     map
 });
 
-/// Lookup an identifier or keyword string, normalize it and get corresponding TokenType.
-/// Returns TokenType::Ident if not a keyword.
+/// Look up the token type for a given identifier or keyword string.
+/// If the string matches a keyword or synonym, returns its TokenType.
+/// Otherwise, returns TokenType::Ident for user-defined identifiers.
 pub fn lookup_ident(ident: &str) -> TokenType {
     let normalized = normalize_keyword(ident);
     if let Some(&tok_type) = KEYWORDS.get(normalized.as_str()) {
