@@ -56,9 +56,6 @@ impl Environment {
                     "".to_string()
                 };
 
-                // Debugging line (can be removed in production)
-                println!("DEBUG: input prompt to print: '{}'", prompt);
-
                 print!("{}", prompt);
                 io::stdout().flush().unwrap();
 
@@ -71,115 +68,8 @@ impl Environment {
         );
 
 
-        // === BUILTIN: shomoy ===
-        // Returns current time/date/timestamp in different formats
-        store.insert(
-            "shomoy".to_string(),
-            Object::BuiltinNative(|args| {
-                use chrono::Local;
-                let now = Local::now();
 
-                if !args.is_empty() {
-                    match args[0] {
-                        Object::String(ref format_str) => match format_str.as_str() {
-                            "timestamp" => Object::Integer(now.timestamp()),
-                            "date" => Object::String(now.format("%Y-%m-%d").to_string()),
-                            "time" => Object::String(now.format("%H:%M:%S").to_string()),
-                            _ => Object::String(now.format("%Y-%m-%d %H:%M:%S").to_string()),
-                        },
-                        _ => Object::String(now.format("%Y-%m-%d %H:%M:%S").to_string()),
-                    }
-                } else {
-                    Object::String(now.format("%Y-%m-%d %H:%M:%S").to_string())
-                }
-            }),
-        );
-
-
-        // === BUILTIN: readkoro ===
-        // Reads content of a file (filename must be provided)
-        store.insert(
-            "readkoro".to_string(),
-            Object::BuiltinNative(|args| {
-                if args.len() != 1 {
-                    return Object::Error("readkoro() requires exactly one argument (filename)".to_string());
-                }
-
-                match &args[0] {
-                    Object::String(filename) => match std::fs::read_to_string(filename) {
-                        Ok(content) => Object::String(content),
-                        Err(e) => Object::Error(format!("File read error: {}", e)),
-                    },
-                    _ => Object::Error("readkoro() requires a string filename".to_string()),
-                }
-            }),
-        );
-
-
-        // === BUILTIN: writekoro ===
-        // Writes string content into a file (filename + content required)
-        store.insert(
-            "writekoro".to_string(),
-            Object::BuiltinNative(|args| {
-                if args.len() != 2 {
-                    return Object::Error("writekoro() requires exactly two arguments (filename, content)".to_string());
-                }
-
-                match (&args[0], &args[1]) {
-                    (Object::String(filename), content) => {
-                        let content_str = format!("{}", content);
-                        match std::fs::write(filename, content_str) {
-                            Ok(_) => Object::Null,
-                            Err(e) => Object::Error(format!("File write error: {}", e)),
-                        }
-                    }
-                    _ => Object::Error("writekoro() requires a string filename as first argument".to_string()),
-                }
-            }),
-        );
-
-
-        // === BUILTIN: shuru_koro ===
-        // Prints a restart message (does not actually restart the program)
-        store.insert(
-            "shuru_koro".to_string(),
-            Object::BuiltinNative(|_args| {
-                println!("প্রোগ্রাম পুনরায় শুরু হচ্ছে...");
-                Object::Null
-            }),
-        );
-
-
-        // === BUILTIN: bondho_koro ===
-        // Prints a shutdown message (does not actually terminate program)
-        store.insert(
-            "bondho_koro".to_string(),
-            Object::BuiltinNative(|_args| {
-                println!("Program bondho kora holo. Dhonnobad!");
-                Object::Null
-            }),
-        );
-
-
-        // === BUILTIN: exitkoro ===
-        // Terminates the program with optional exit code
-        store.insert(
-            "exitkoro".to_string(),
-            Object::BuiltinNative(|args| {
-                let exit_code = if !args.is_empty() {
-                    match &args[0] {
-                        Object::Integer(code) => *code as i32,
-                        _ => 0,
-                    }
-                } else {
-                    0
-                };
-
-                println!("Program theke exit kora hosse!");
-                std::process::exit(exit_code);
-            }),
-        );
-
+        
         // Return the final environment with all built-ins loaded
         Environment { store, outer: None }
     }

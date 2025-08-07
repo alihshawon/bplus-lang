@@ -1,6 +1,7 @@
 // compiler/src/main.rs
 
 // Import all necessary modules for the compiler
+mod stdlib;
 mod ast;
 mod environment;
 mod evaluator;
@@ -153,6 +154,42 @@ fn main() {
         if line.trim() == "prosthan" {
             break;
         }
+
+
+
+
+
+        
+// In REPL loop, add import command handling:
+if line.trim().starts_with("anyo ") || line.trim().starts_with("import ") {
+    let parts: Vec<&str> = line.trim().split_whitespace().collect();
+    if parts.len() >= 2 {
+        let module_name = parts[1];
+        match stdlib::load_stdlib_module(&mut env, module_name) {
+            Ok(()) => {
+                // Module loaded successfully message already printed in stdlib
+            },
+            Err(e) => println!("Import error: {}", e),
+        }
+    } else {
+        println!("Usage: anyo <module_name>");
+        println!("Available modules: {}", stdlib::get_available_modules().join(", "));
+    }
+    continue;
+}
+
+// Add list modules command
+if line.trim() == "modules" || line.trim() == "module list" {
+    println!("Available modules:");
+    for module in stdlib::get_available_modules() {
+        println!("  - {}", module);
+    }
+    continue;
+}
+
+
+
+
 
         // Handle language pack activation commands inside REPL
         if line.trim().starts_with("langpack ") {
