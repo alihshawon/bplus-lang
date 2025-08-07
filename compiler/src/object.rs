@@ -26,6 +26,7 @@ pub enum Object {
     ReturnValue(Box<Object>),     // Wrapper for return statements' values
     BuiltinFunction(BuiltinFunction),   // Builtin function variant
     BuiltinNative(fn(Vec<Object>) -> Object), // Native builtin function pointer
+    Array(Vec<Object>),           // Handle Arrays
     Error(String),                // Error object containing error message
     Function {                   // User-defined function object
         parameters: Vec<Expression>, // Function parameters as AST expressions
@@ -39,22 +40,26 @@ impl fmt::Display for Object {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Object::Integer(i) => write!(f, "{}", i),
-            Object::Boolean(true) => write!(f, "Ha"),   // True in Bangla
-            Object::Boolean(false) => write!(f, "Na"), // False in Bangla
+            Object::Boolean(true) => write!(f, "Ha"),    // True in Bangla
+            Object::Boolean(false) => write!(f, "Na"),   // False in Bangla
             Object::String(s) => write!(f, "{}", s),
             Object::Null => write!(f, "null"),
             Object::ReturnValue(obj) => write!(f, "{}", obj),
             Object::Error(msg) => write!(f, "Error: {}", msg),
             Object::Function { parameters, .. } => {
-                // Display function signature with parameter list
                 let params: Vec<String> = parameters.iter().map(|p| format!("{}", p)).collect();
                 write!(f, "fn({}) {{ ... }}", params.join(", "))
             }
             Object::BuiltinFunction(name) => write!(f, "[builtin: {:?}]", name),
             Object::BuiltinNative(_) => write!(f, "[native builtin function]"),
+            Object::Array(elements) => {
+                let elems: Vec<String> = elements.iter().map(|e| format!("{}", e)).collect();
+                write!(f, "[{}]", elems.join(", "))
+            }
         }
     }
 }
+
 
 impl Object {
     // Helper method to check if Object is an error type

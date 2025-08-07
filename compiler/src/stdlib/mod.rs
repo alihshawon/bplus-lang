@@ -43,7 +43,7 @@ pub fn load_stdlib_module(env: &mut Environment, module_name: &str) -> Result<()
         }
         
         // String module variants
-        "string" | "string" => {
+        "string" | "shobdo" => {
             string::load_string_functions(env);
             println!("String module loaded successfully");
             Ok(())

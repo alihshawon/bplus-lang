@@ -18,11 +18,15 @@ use lexer::Lexer;
 use parser::Parser;
 use error::{BPlusError, ErrorType, ErrorManager};
 use extension_manager::ExtensionManager;
+
 use std::env;
 use std::fs;
 use std::io::{self, Write};
+use std::path::Path;
 
-// Function to check if all curly brackets in input are balanced
+use log::{error, info, warn};
+
+/// Function to check if all curly brackets in input are balanced
 fn brackets_balanced(input: &str) -> bool {
     let mut count = 0;
     for c in input.chars() {
@@ -38,47 +42,63 @@ fn brackets_balanced(input: &str) -> bool {
     count == 0
 }
 
-// Function to run source code with error management and evaluation
-fn run_source_with_error_manager(source: &str, error_manager: &ErrorManager) {
+/// Function to run source code with error management and evaluation
+fn run_source_with_error_manager(source: &str, error_manager: &ErrorManager) -> Result<(), ()> {
+    // Create a new environment for the program execution
     let mut env = Environment::new();
+    // Initialize lexer with source code
     let lexer = Lexer::new(source.to_string());
+    // Create parser from lexer
     let mut parser = Parser::new(lexer);
+    // Parse the entire program into AST
     let program = parser.parse_program();
 
-    // Print parsing errors if any, then return
+    // If parser has errors, print them and return error
     if !parser.errors.is_empty() {
         for rust_error in parser.errors {
             let bp_error = BPlusError::new(ErrorType::InvalidStatement(rust_error));
             error_manager.print_error(&bp_error);
         }
-        return;
+        return Err(());
     }
 
-    // Evaluate parsed program and print result or error
+    // Evaluate the parsed program and print result or errors
     let evaluated = evaluator::eval(program, &mut env);
     if evaluated != object::Object::Null {
         match &evaluated {
             object::Object::Error(msg) => {
                 let bp_error = BPlusError::new(ErrorType::InternalError(msg.clone()));
                 error_manager.print_error(&bp_error);
+                return Err(());
             }
-            _ => println!("{}", evaluated)
+            _ => println!("{}", evaluated),
         }
     }
+    Ok(())
 }
 
-// Main entry point of the compiler/interpreter executable
+/// Initialize logging for the compiler using env_logger
+fn init_logging() {
+    env_logger::init();
+}
+
+/// Main entry point of the compiler/interpreter executable
 fn main() {
+    // Initialize logging system
+    init_logging();
+
+    info!("Starting B+ compiler/interpreter...");
+
     // Initialize the extension system to manage language packs
     let mut extension_manager = ExtensionManager::default();
-    
+
     // Attempt to initialize extensions and print welcome messages
     match extension_manager.initialize() {
         Ok(()) => {
+            // If active language pack present, print welcome message and example usage
             if let Some(pack) = extension_manager.get_active_language_pack() {
                 let welcome_default = format!("Active language pack: {} ({})", pack.language, pack.version);
-                let welcome_msg = pack.keyword_mappings.get("welcome_message")
-                    .unwrap_or(&welcome_default);
+                let welcome_msg = pack.keyword_mappings.get("welcome_message").unwrap_or(&welcome_default);
                 println!("{}", welcome_msg);
 
                 if let Some(example) = pack.keyword_mappings.get("example_usage") {
@@ -96,104 +116,127 @@ fn main() {
             let error_default = "Extension system error".to_string();
             let fallback_default = "Default Banglish mode e cholche...".to_string();
 
-            let error_msg = extension_manager.get_active_language_pack()
+            let error_msg = extension_manager
+                .get_active_language_pack()
                 .and_then(|pack| pack.keyword_mappings.get("extension_init_error"))
                 .unwrap_or(&error_default);
-            let fallback_msg = extension_manager.get_active_language_pack()
+
+            let fallback_msg = extension_manager
+                .get_active_language_pack()
                 .and_then(|pack| pack.keyword_mappings.get("fallback_mode"))
                 .unwrap_or(&fallback_default);
 
+            error!("{}: {}", error_msg, e);
             eprintln!("{}: {}", error_msg, e);
             eprintln!("{}", fallback_msg);
         }
     }
 
+    // Collect command line arguments
     let args: Vec<String> = env::args().collect();
 
-    // File mode: run source code from file if filename provided as argument
+    // If filename argument provided, run the file and exit
     if args.len() > 1 {
         let filename = &args[1];
-        match fs::read_to_string(filename) {
+        let path = Path::new(filename);
+
+        match fs::read_to_string(path) {
             Ok(source) => {
-                run_source_with_error_manager(&source, extension_manager.get_error_manager());
+                if let Err(_) = run_source_with_error_manager(&source, extension_manager.get_error_manager()) {
+                    error!("Error occurred while running source file: {}", filename);
+                }
             }
-            Err(_) => {
-                // Print file not found error
+            Err(e) => {
+                // File read error handling
                 let bp_error = BPlusError::new(ErrorType::FileNotFound(filename.clone()));
                 extension_manager.get_error_manager().print_error(&bp_error);
+                error!("Failed to read file '{}': {}", filename, e);
             }
         }
         return;
     }
 
-    // REPL (Read-Eval-Print Loop) mode initialization message
+    // REPL mode welcome message
     let repl_default = "REPL mode shuru holo. 'prosthan' likhe ber hon.".to_string();
-    let repl_start_msg = extension_manager.get_active_language_pack()
+    let repl_start_msg = extension_manager
+        .get_active_language_pack()
         .and_then(|pack| pack.keyword_mappings.get("repl_start"))
         .unwrap_or(&repl_default);
+
     println!("{}", repl_start_msg);
 
+    // Initialize environment for REPL
     let mut env = Environment::new();
     let mut input_buffer = String::new();
 
     // Start REPL loop to read input lines until exit command
     loop {
+        // Print prompt based on buffer state
         if input_buffer.is_empty() {
             print!(">> ");
         } else {
             print!("... ");
         }
-        io::stdout().flush().unwrap();
+
+        // Flush stdout and check for errors
+        if io::stdout().flush().is_err() {
+            error!("Failed to flush stdout");
+            break;
+        }
 
         let mut line = String::new();
-        if io::stdin().read_line(&mut line).is_err() {
+        let read_res = io::stdin().read_line(&mut line);
+
+        // Handle stdin reading errors or EOF (Ctrl-D)
+        if let Err(e) = read_res {
+            error!("Error reading stdin: {}", e);
+            break;
+        }
+        if read_res.unwrap() == 0 {
+            // EOF detected - exit gracefully with goodbye message
+            println!("\n{}", extension_manager.get_active_language_pack()
+                .and_then(|pack| pack.keyword_mappings.get("goodbye"))
+                .unwrap_or(&"Goodbye!".to_string()));
             break;
         }
 
-        // Exit REPL on "prosthan" command
-        if line.trim() == "prosthan" {
+        let trimmed_line = line.trim();
+
+        // Exit REPL on 'prosthan' command
+        if trimmed_line == "prosthan" {
             break;
         }
 
-
-
-
-
-        
-// In REPL loop, add import command handling:
-if line.trim().starts_with("anyo ") || line.trim().starts_with("import ") {
-    let parts: Vec<&str> = line.trim().split_whitespace().collect();
-    if parts.len() >= 2 {
-        let module_name = parts[1];
-        match stdlib::load_stdlib_module(&mut env, module_name) {
-            Ok(()) => {
-                // Module loaded successfully message already printed in stdlib
-            },
-            Err(e) => println!("Import error: {}", e),
+        // Handle import command inside REPL: anyo or import
+        if trimmed_line.starts_with("anyo ") || trimmed_line.starts_with("import ") {
+            let parts: Vec<&str> = trimmed_line.split_whitespace().collect();
+            if parts.len() >= 2 {
+                let module_name = parts[1];
+                match crate::stdlib::load_stdlib_module(&mut env, module_name) {
+                    Ok(()) => {
+                        info!("Module '{}' loaded successfully", module_name);
+                    }
+                    Err(e) => println!("Import error: {}", e),
+                }
+            } else {
+                println!("Usage: anyo <module_name>");
+                println!("Available modules: {}", stdlib::get_available_modules().join(", "));
+            }
+            continue;
         }
-    } else {
-        println!("Usage: anyo <module_name>");
-        println!("Available modules: {}", stdlib::get_available_modules().join(", "));
-    }
-    continue;
-}
 
-// Add list modules command
-if line.trim() == "modules" || line.trim() == "module list" {
-    println!("Available modules:");
-    for module in stdlib::get_available_modules() {
-        println!("  - {}", module);
-    }
-    continue;
-}
+        // List available modules command
+        if trimmed_line == "modules" || trimmed_line == "module list" {
+            println!("Available modules:");
+            for module in stdlib::get_available_modules() {
+                println!("  - {}", module);
+            }
+            continue;
+        }
 
-
-
-
-
-        // Handle language pack activation commands inside REPL
-        if line.trim().starts_with("langpack ") {
-            let parts: Vec<&str> = line.trim().split_whitespace().collect();
+        // Language pack activation command inside REPL
+        if trimmed_line.starts_with("langpack ") {
+            let parts: Vec<&str> = trimmed_line.split_whitespace().collect();
             if parts.len() == 2 {
                 let pack_name = parts[1];
                 match extension_manager.activate_language_pack(pack_name) {
@@ -208,17 +251,17 @@ if line.trim() == "modules" || line.trim() == "module list" {
         }
 
         // List available language packs
-        if line.trim() == "langpack list" {
+        if trimmed_line == "langpack list" {
             println!("Available language packs:");
             println!("- english");
             println!("- bangla-unicode");
             continue;
         }
 
-        // Append user input line to buffer
+        // Append current input line to buffer
         input_buffer.push_str(&line);
 
-        // When brackets balanced, parse and evaluate the buffered input
+        // Parse and evaluate when brackets balanced
         if brackets_balanced(&input_buffer) {
             let lexer = Lexer::new(input_buffer.clone());
             let mut parser = Parser::new(lexer);
@@ -234,7 +277,7 @@ if line.trim() == "modules" || line.trim() == "module list" {
                 continue;
             }
 
-            // Evaluate the program and print results or errors
+            // Evaluate program and print results or errors
             let evaluated = evaluator::eval(program, &mut env);
             if evaluated != object::Object::Null {
                 match &evaluated {
@@ -242,7 +285,7 @@ if line.trim() == "modules" || line.trim() == "module list" {
                         let bp_error = BPlusError::new(ErrorType::InternalError(msg.clone()));
                         extension_manager.get_error_manager().print_error(&bp_error);
                     }
-                    _ => println!("{}", evaluated)
+                    _ => println!("{}", evaluated),
                 }
             }
             input_buffer.clear();
@@ -254,7 +297,7 @@ if line.trim() == "modules" || line.trim() == "module list" {
         match pack.language.as_str() {
             "English" => println!("Goodbye! Thanks for using B+!"),
             "Bengali Unicode" => println!("বিদায়! বি+ ব্যবহার করার জন্য ধন্যবাদ!"),
-            _ => println!("Dhonnobad! B+ bebhar korar jonno!")
+            _ => println!("Dhonnobad! B+ bebhar korar jonno!"),
         }
     } else {
         println!("Dhonnobad! B+ bebhar korar jonno!");
@@ -275,7 +318,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extension_manager() {
+    fn test_extension_manager_language() {
         // Test initialization of extension manager and default language
         let mut ext_manager = ExtensionManager::new("test_extensions");
         let error_manager = ext_manager.get_error_manager();

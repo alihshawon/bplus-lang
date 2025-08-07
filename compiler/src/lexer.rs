@@ -7,6 +7,8 @@ pub struct Lexer {
     position: usize,      // Current index in input string (points to current char)
     read_position: usize, // Next index to read from input (after current char)
     ch: u8,               // Current byte (character) under examination
+    line: usize,          // Current line number
+    column: usize,        // Current column number
 }
 
 impl Lexer {
@@ -17,6 +19,8 @@ impl Lexer {
             position: 0,
             read_position: 0,
             ch: 0,
+            line: 1,
+            column: 0,
         };
         l.read_char(); // Initialize by reading first character
         l
@@ -31,6 +35,13 @@ impl Lexer {
         }
         self.position = self.read_position;
         self.read_position += 1;
+
+        if self.ch == b'\n' {
+            self.line += 1;
+            self.column = 0;
+        } else {
+            self.column += 1;
+        }
     }
 
     // Peek at the next character without advancing read position
@@ -59,7 +70,7 @@ impl Lexer {
                 self.read_char();
                 self.read_char();
                 if let Err(err) = self.skip_multi_line_comment("/*", "*/") {
-                    return Token::new(TokenType::Illegal, &err);
+                    return Token::new(TokenType::Illegal, &err, self.line, self.column);
                 }
                 return self.next_token();
             }
@@ -81,7 +92,7 @@ impl Lexer {
                 // Consume "=begin"
                 for _ in 0..6 { self.read_char(); }
                 if let Err(err) = self.skip_multi_line_comment("=begin", "=end") {
-                    return Token::new(TokenType::Illegal, &err);
+                    return Token::new(TokenType::Illegal, &err, self.line, self.column);
                 }
                 return self.next_token();
             }
@@ -90,7 +101,7 @@ impl Lexer {
             self.read_char();
             self.read_char();
             if let Err(err) = self.skip_multi_line_comment("{-", "-}") {
-                return Token::new(TokenType::Illegal, &err);
+                return Token::new(TokenType::Illegal, &err, self.line, self.column);
             }
             return self.next_token();
         } else if self.ch == b'(' && self.peek_char() == b'*' {
@@ -98,7 +109,7 @@ impl Lexer {
             self.read_char();
             self.read_char();
             if let Err(err) = self.skip_multi_line_comment("(*", "*)") {
-                return Token::new(TokenType::Illegal, &err);
+                return Token::new(TokenType::Illegal, &err, self.line, self.column);
             }
             return self.next_token();
         } else if self.ch == b'"' {
@@ -110,7 +121,7 @@ impl Lexer {
                 self.read_char();
                 self.read_char();
                 if let Err(err) = self.skip_multi_line_comment("\"\"\"", "\"\"\"") {
-                    return Token::new(TokenType::Illegal, &err);
+                    return Token::new(TokenType::Illegal, &err, self.line, self.column);
                 }
                 return self.next_token();
             }
@@ -123,7 +134,7 @@ impl Lexer {
                 self.read_char();
                 self.read_char();
                 if let Err(err) = self.skip_multi_line_comment("'''", "'''") {
-                    return Token::new(TokenType::Illegal, &err);
+                    return Token::new(TokenType::Illegal, &err, self.line, self.column);
                 }
                 return self.next_token();
             }
@@ -134,37 +145,37 @@ impl Lexer {
             b'=' => {
                 if self.peek_char() == b'=' {
                     self.read_char();
-                    Token::new(TokenType::Eq, "==") // Equality operator
+                    Token::new(TokenType::Eq, "==", self.line, self.column) // Equality operator
                 } else {
-                    Token::new(TokenType::Assign, "=") // Assignment operator
+                    Token::new(TokenType::Assign, "=", self.line, self.column) // Assignment operator
                 }
             }
-            b';' => Token::new(TokenType::Semicolon, ";"),
-            b'(' => Token::new(TokenType::LParen, "("),
-            b')' => Token::new(TokenType::RParen, ")"),
-            b',' => Token::new(TokenType::Comma, ","),
-            b'+' => Token::new(TokenType::Plus, "+"),
-            b'-' => Token::new(TokenType::Minus, "-"),
+            b';' => Token::new(TokenType::Semicolon, ";", self.line, self.column),
+            b'(' => Token::new(TokenType::LParen, "(", self.line, self.column),
+            b')' => Token::new(TokenType::RParen, ")", self.line, self.column),
+            b',' => Token::new(TokenType::Comma, ",", self.line, self.column),
+            b'+' => Token::new(TokenType::Plus, "+", self.line, self.column),
+            b'-' => Token::new(TokenType::Minus, "-", self.line, self.column),
             b'!' => {
                 if self.peek_char() == b'=' {
                     self.read_char();
-                    Token::new(TokenType::NotEq, "!=") // Not equal operator
+                    Token::new(TokenType::NotEq, "!=", self.line, self.column) // Not equal operator
                 } else {
-                    Token::new(TokenType::Bang, "!") // Logical NOT
+                    Token::new(TokenType::Bang, "!", self.line, self.column) // Logical NOT
                 }
             }
-            b'/' => Token::new(TokenType::Slash, "/"),
-            b'*' => Token::new(TokenType::Asterisk, "*"),
-            b'<' => Token::new(TokenType::Lt, "<"),
-            b'>' => Token::new(TokenType::Gt, ">"),
-            b'{' => Token::new(TokenType::LBrace, "{"),
-            b'}' => Token::new(TokenType::RBrace, "}"),
+            b'/' => Token::new(TokenType::Slash, "/", self.line, self.column),
+            b'*' => Token::new(TokenType::Asterisk, "*", self.line, self.column),
+            b'<' => Token::new(TokenType::Lt, "<", self.line, self.column),
+            b'>' => Token::new(TokenType::Gt, ">", self.line, self.column),
+            b'{' => Token::new(TokenType::LBrace, "{", self.line, self.column),
+            b'}' => Token::new(TokenType::RBrace, "}", self.line, self.column),
             b'"' => {
                 // Read string literal enclosed in double quotes
                 let literal = self.read_string();
-                return Token::new(TokenType::String, &literal);
+                return Token::new(TokenType::String, &literal, self.line, self.column);
             }
-            b'.' => Token::new(TokenType::Fullstop, "."), // Fullstop token added
+            b'.' => Token::new(TokenType::Fullstop, ".", self.line, self.column), // Fullstop token added
 
             // Identifiers or multiword keywords (allow Bengali Unicode letters too)
             _ if self.ch.is_ascii_alphabetic() || self.ch == b'_' || self.is_unicode_bengali_letter() => {
@@ -188,7 +199,7 @@ impl Lexer {
                     // Lookup token type for multi-word literal
                     let token_type = lookup_ident(&multi_word_literal);
                     if token_type != TokenType::Ident {
-                        return Token::new(token_type, &multi_word_literal);
+                        return Token::new(token_type, &multi_word_literal, self.line, self.column);
                     } else {
                         // Rewind lexer state if not matched
                         self.position = saved_position;
@@ -199,16 +210,16 @@ impl Lexer {
 
                 // Return token for first identifier
                 let token_type = lookup_ident(&first_literal);
-                return Token::new(token_type, &first_literal);
+                return Token::new(token_type, &first_literal, self.line, self.column);
             }
 
             b'0'..=b'9' => {
                 // Read integer literals (only digits)
                 let literal = self.read_number();
-                return Token::new(TokenType::Int, &literal);
+                return Token::new(TokenType::Int, &literal, self.line, self.column);
             }
-            0 => Token::new(TokenType::Eof, ""), // End of input
-            _ => Token::new(TokenType::Illegal, &(self.ch as char).to_string()), // Illegal/unknown token
+            0 => Token::new(TokenType::Eof, "", self.line, self.column), // End of input
+            _ => Token::new(TokenType::Illegal, &(self.ch as char).to_string(), self.line, self.column), // Illegal/unknown token
         };
 
         self.read_char();

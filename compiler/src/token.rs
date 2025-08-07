@@ -58,7 +58,7 @@ pub enum TokenType {
     Othoba,       // or keyword
     Ebong,        // and keyword
     Ba,           // or keyword
-    Ferot,        // return keyword
+    ReturnKoro,   // return keyword
     Dekhao,       // print keyword
     InputNao,     // input function keyword
     Shomoy,       // time keyword
@@ -77,22 +77,63 @@ pub enum TokenType {
     Thamo,
     Jekhane,
     Protibar,
+
+    // Module system
+    ImportKoro,     // import
+    ExportKoro,     // export
+    Module,         // module
+    EiHisebe,         // as (aliasing)
+
+    // Exception handling
+    CheshtaKoro,    // try
+    DhoreFelo,      // catch
+    Oboseshe,       // finally
+    ThrowKoro,      // throw
+
+    // Type system
+    TypeBanao,      // type keyword
+    Dhoroner,       // typeof
+    Kisuna,         // null/none
+
+    // Data structures
+    Talika,         // list (array)
+    Object,         // map (dictionary)
+    Arrow,          // ->
+    DoubleColon,    // ::
+
+    // Async
+    OpekkhaKoro,    // await
+    ShomoyNiropekho,   // async
+
+
 }
 
-/// Struct representing a token, consisting of a token type and its literal string.
+/// Struct representing a token, consisting of type, literal, and position info.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Token {
     pub token_type: TokenType,
     pub literal: String,
+    pub line: usize,
+    pub column: usize,
 }
 
 impl Token {
-    /// Constructor to create a new token with given type and literal value.
-    pub fn new(token_type: TokenType, literal: &str) -> Self {
+    /// Constructor to create a new token with given type, literal, and position.
+    pub fn new(token_type: TokenType, literal: &str, line: usize, column: usize) -> Self {
         Token {
             token_type,
             literal: literal.to_string(),
+            line,
+            column,
         }
+    }
+
+    /// Creates a string representation of the token, useful for debugging.
+    pub fn to_string(&self) -> String {
+        format!(
+            "{}('{}') at {}:{}",
+            self.token_type, self.literal, self.line, self.column
+        )
     }
 }
 
@@ -148,7 +189,7 @@ impl fmt::Display for TokenType {
             TokenType::Othoba => "othoba",
             TokenType::Ebong => "ebong",
             TokenType::Ba => "ba",
-            TokenType::Ferot => "ferot",
+            TokenType::ReturnKoro => "return koro",
             TokenType::Dekhao => "dekhao",
             TokenType::InputNao => "input nao",
             TokenType::Shomoy => "shomoy",
@@ -165,6 +206,26 @@ impl fmt::Display for TokenType {
             TokenType::Thamo => "thamo",
             TokenType::Jekhane => "jekhane",
             TokenType::Protibar => "protibar",
+
+            TokenType::ImportKoro => "import koro",
+            TokenType::ExportKoro => "export koro",
+            TokenType::Module => "module",
+            TokenType::EiHisebe => "ei hisebe",
+            TokenType::CheshtaKoro => "cheshta koro",
+            TokenType::DhoreFelo => "dhore felo",
+            TokenType::Oboseshe => "oboseshe",
+            TokenType::ThrowKoro => "throw koro",
+            TokenType::TypeBanao => "type banao",
+            TokenType::Dhoroner => "dhoroner",
+            TokenType::Kisuna => "kisuna",
+            TokenType::Talika => "talika",
+            TokenType::Object => "object",
+            TokenType::Arrow => "->",
+            TokenType::DoubleColon => "::",
+            TokenType::OpekkhaKoro => "opekkha koro",
+            TokenType::ShomoyNiropekho => "shomoy niropekkho",
+
+
         };
         write!(f, "{}", s)
     }
@@ -236,10 +297,10 @@ pub static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     map.insert("or", TokenType::Ba);
 
     // Return statement variants
-    map.insert("ferot", TokenType::Ferot);
-    map.insert("ferot koro", TokenType::Ferot);
-    map.insert("return koro", TokenType::Ferot);
-    map.insert("return", TokenType::Ferot);
+    map.insert("ferot", TokenType::ReturnKoro);
+    map.insert("ferot koro", TokenType::ReturnKoro);
+    map.insert("return koro", TokenType::ReturnKoro);
+    map.insert("return", TokenType::ReturnKoro);
 
     // Print statement variants
     map.insert("dekhao", TokenType::Dekhao);
@@ -278,6 +339,7 @@ pub static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
 
     // Loop keywords
     map.insert("jotokhon", TokenType::Jotokhon);
+    map.insert("jotokhon porjonto", TokenType::Jotokhon);
     map.insert("age koro", TokenType::AgeKoro);
     map.insert("agekoro", TokenType::AgeKoro);
     map.insert("jonno", TokenType::Jonno);
@@ -289,17 +351,105 @@ pub static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     map.insert("jekhane", TokenType::Jekhane);
     map.insert("protibar", TokenType::Protibar);
 
+
+
+    // Module system
+    map.insert("amdani koro", TokenType::ImportKoro);
+    map.insert("import", TokenType::ImportKoro);
+    map.insert("import koro", TokenType::ImportKoro);
+
+    map.insert("roptani koro", TokenType::ExportKoro);
+    map.insert("export", TokenType::ExportKoro);
+    map.insert("export koro", TokenType::ExportKoro);
+
+    map.insert("module", TokenType::Module);
+
+    map.insert("ei hisebe", TokenType::EiHisebe);
+    map.insert("as", TokenType::EiHisebe);
+
+    // Exception handling
+    map.insert("try koro", TokenType::CheshtaKoro);
+    map.insert("try", TokenType::CheshtaKoro);
+    map.insert("cheshta koro", TokenType::CheshtaKoro);
+
+    map.insert("dhore felo", TokenType::DhoreFelo);
+    map.insert("catch", TokenType::DhoreFelo);
+
+    map.insert("oboseshe", TokenType::Oboseshe);
+    map.insert("finally", TokenType::Oboseshe);
+
+    map.insert("felo", TokenType::ThrowKoro);
+    map.insert("throw", TokenType::ThrowKoro);
+    map.insert("throw koro", TokenType::ThrowKoro);
+
+    // Type system
+    map.insert("type banao", TokenType::TypeBanao);
+    map.insert("type gothon koro", TokenType::TypeBanao);
+    map.insert("nirdharon koro", TokenType::TypeBanao);
+    map.insert("type dao", TokenType::TypeBanao);
+
+    map.insert("dhoron ber koro", TokenType::Dhoroner);
+    map.insert("type nirnoy koro", TokenType::Dhoroner);
+    map.insert("typeof", TokenType::Dhoroner);
+
+    map.insert("kisuna", TokenType::Kisuna);
+    map.insert("nil", TokenType::Kisuna);
+    map.insert("null", TokenType::Kisuna);
+    map.insert("none", TokenType::Kisuna);
+
+    // Async
+    map.insert("opekkha", TokenType::OpekkhaKoro);
+    map.insert("opekkha koro", TokenType::OpekkhaKoro);
+    map.insert("await", TokenType::OpekkhaKoro);
+
+    map.insert("shomoy niropekkho", TokenType::ShomoyNiropekho);
+    map.insert("asynchronous", TokenType::ShomoyNiropekho);
+    map.insert("async", TokenType::ShomoyNiropekho);
+
+
     map
 });
 
-/// Look up the token type for a given identifier or keyword string.
-/// If the string matches a keyword or synonym, returns its TokenType.
-/// Otherwise, returns TokenType::Ident for user-defined identifiers.
+/// Look up the token type for a given identifier string.
 pub fn lookup_ident(ident: &str) -> TokenType {
-    let normalized = normalize_keyword(ident);
-    if let Some(&tok_type) = KEYWORDS.get(normalized.as_str()) {
-        tok_type
-    } else {
-        TokenType::Ident
+    if let Some(&tok_type) = KEYWORDS.get(ident) {
+        return tok_type;
     }
+
+    if ident.chars().any(|c| c.is_uppercase() || c.is_whitespace()) {
+        let normalized = normalize_keyword(ident);
+        if let Some(&tok_type) = KEYWORDS.get(normalized.as_str()) {
+            return tok_type;
+        }
+    }
+
+    TokenType::Ident
+}
+
+
+/// Helper to check if a token is a literal (int, float, string, list, set).
+pub fn is_literal(token_type: TokenType) -> bool {
+    matches!(
+        token_type,
+        TokenType::Int | TokenType::Float | TokenType::String | TokenType::List | TokenType::Set
+    )
+}
+
+/// Helper to check if a token is an operator (=, +, -, etc.).
+pub fn is_operator(token_type: TokenType) -> bool {
+    matches!(
+        token_type,
+        TokenType::Assign
+            | TokenType::Plus
+            | TokenType::Minus
+            | TokenType::Bang
+            | TokenType::Asterisk
+            | TokenType::Slash
+            | TokenType::Lt
+            | TokenType::Gt
+            | TokenType::Eq
+            | TokenType::LtEq
+            | TokenType::GtEq
+            | TokenType::NotEq
+    )
 }

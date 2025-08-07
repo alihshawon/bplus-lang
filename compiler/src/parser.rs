@@ -38,8 +38,9 @@ impl Parser {
     pub fn new(lexer: Lexer) -> Self {
         let mut p = Parser {
             lexer,
-            cur_token: Token::new(TokenType::Illegal, ""),
-            peek_token: Token::new(TokenType::Illegal, ""),
+cur_token: Token::new(TokenType::Illegal, "", 0, 0),
+peek_token: Token::new(TokenType::Illegal, "", 0, 0),
+
             errors: Vec::new(),
             prefix_parse_fns: HashMap::new(),
             infix_parse_fns: HashMap::new(),
@@ -117,8 +118,8 @@ impl Parser {
     fn parse_statement(&mut self) -> Option<Statement> {
         match self.cur_token.token_type {
             TokenType::Dhoro => self.parse_let_statement(),
-            TokenType::Ferot => self.parse_return_statement(),
-            _ => self.parse_expression_statement_statement(),
+            TokenType::ReturnKoro => self.parse_return_statement(),
+            _ => self.parse_expression_statement(),
         }
     }
 
@@ -156,7 +157,7 @@ impl Parser {
     }
 
     /// Parse expression statement wrapped as Statement
-    fn parse_expression_statement_statement(&mut self) -> Option<Statement> {
+    fn parse_expression_statement(&mut self) -> Option<Statement> {
         let expr = self.parse_expression(Precedence::LOWEST)?;
         if self.peek_token_is(TokenType::Semicolon) {
             self.next_token();
