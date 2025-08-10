@@ -14,6 +14,13 @@ pub enum TokenType {
     Ident,        // Variable/function names
     Int,          // Integer literals
     Float,        // Floating point literals
+    Double,     // double precision float
+    Complex,    // complex number
+    Decimal,    // high precision decimal
+    Bool,       // boolean true/false (optional, you have Ha/Na)
+    Vector,     // vector type (optional)
+    Matrix,     // matrix type (optional)
+    Char,
     List,         // List literals
     Set,          // Set literals
     String,       // String literals
@@ -31,6 +38,16 @@ pub enum TokenType {
     LtEq,         // <=
     GtEq,         // >=
     NotEq,        // !=
+
+
+
+    // Bitwise Operators
+    Ampersand,     // &
+    Pipe,          // |
+    Caret,         // ^
+    Tilde,         // ~
+    ShiftLeft,     // <<
+    ShiftRight,    // >>
 
     // Delimiters and punctuation
     Comma,        // ,
@@ -53,11 +70,8 @@ pub enum TokenType {
     Hoy,          // condition connector (like "is")
     Tahole,       // then keyword
     Nahoy,        // else keyword
-    Noyto,        // else synonym
-    Noile,        // else synonym
     Othoba,       // or keyword
     Ebong,        // and keyword
-    Ba,           // or keyword
     ReturnKoro,   // return keyword
     Dekhao,       // print keyword
     InputNao,     // input function keyword
@@ -71,7 +85,7 @@ pub enum TokenType {
     // Loop-related keywords
     Jotokhon,
     AgeKoro,
-    Jonno,
+    ErJonno,
     ProtitarJonno,
     Choluk,
     Thamo,
@@ -104,6 +118,10 @@ pub enum TokenType {
     // Async
     OpekkhaKoro,    // await
     ShomoyNiropekho,   // async
+
+    // Macro,
+    // AttributeStart,
+    // AttributeEnd,
 
 
 }
@@ -184,11 +202,8 @@ impl fmt::Display for TokenType {
             TokenType::Hoy => "hoy",
             TokenType::Tahole => "tahole",
             TokenType::Nahoy => "nahoy",
-            TokenType::Noyto => "noyto",
-            TokenType::Noile => "noile",
             TokenType::Othoba => "othoba",
             TokenType::Ebong => "ebong",
-            TokenType::Ba => "ba",
             TokenType::ReturnKoro => "return koro",
             TokenType::Dekhao => "dekhao",
             TokenType::InputNao => "input nao",
@@ -200,7 +215,7 @@ impl fmt::Display for TokenType {
 
             TokenType::Jotokhon => "jotokhon",
             TokenType::AgeKoro => "age koro",
-            TokenType::Jonno => "jonno",
+            TokenType::ErJonno => "er jonno",
             TokenType::ProtitarJonno => "protitar jonno",
             TokenType::Choluk => "choluk",
             TokenType::Thamo => "thamo",
@@ -293,8 +308,10 @@ pub static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     // Logical operators
     map.insert("ebong", TokenType::Ebong);
     map.insert("and", TokenType::Ebong);
-    map.insert("ba", TokenType::Ba);
-    map.insert("or", TokenType::Ba);
+    map.insert("othoba", TokenType::Othoba);
+    map.insert("ba", TokenType::Othoba);
+    map.insert("or", TokenType::Othoba);
+
 
     // Return statement variants
     map.insert("ferot", TokenType::ReturnKoro);
@@ -342,7 +359,8 @@ pub static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     map.insert("jotokhon porjonto", TokenType::Jotokhon);
     map.insert("age koro", TokenType::AgeKoro);
     map.insert("agekoro", TokenType::AgeKoro);
-    map.insert("jonno", TokenType::Jonno);
+    map.insert("er jonno", TokenType::ErJonno);
+    map.insert("erjonno", TokenType::ErJonno);
     map.insert("protitar jonno", TokenType::ProtitarJonno);
     map.insert("protitarjonno", TokenType::ProtitarJonno);
     map.insert("choluk", TokenType::Choluk);
@@ -350,7 +368,6 @@ pub static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     map.insert("bhango", TokenType::Thamo);
     map.insert("jekhane", TokenType::Jekhane);
     map.insert("protibar", TokenType::Protibar);
-
 
 
     // Module system
@@ -431,9 +448,22 @@ pub fn lookup_ident(ident: &str) -> TokenType {
 pub fn is_literal(token_type: TokenType) -> bool {
     matches!(
         token_type,
-        TokenType::Int | TokenType::Float | TokenType::String | TokenType::List | TokenType::Set
+        TokenType::Int
+            | TokenType::Float
+            | TokenType::Double    
+            | TokenType::Complex  
+            | TokenType::Decimal  
+            | TokenType::Bool     
+            | TokenType::Char
+            | TokenType::String
+            | TokenType::List
+            | TokenType::Set
+            | TokenType::Object
+            | TokenType::Vector   
+            | TokenType::Matrix   
     )
 }
+
 
 /// Helper to check if a token is an operator (=, +, -, etc.).
 pub fn is_operator(token_type: TokenType) -> bool {
@@ -451,5 +481,11 @@ pub fn is_operator(token_type: TokenType) -> bool {
             | TokenType::LtEq
             | TokenType::GtEq
             | TokenType::NotEq
+            | TokenType::Ampersand
+            | TokenType::Pipe
+            | TokenType::Caret
+            | TokenType::Tilde
+            | TokenType::ShiftLeft
+            | TokenType::ShiftRight
     )
 }

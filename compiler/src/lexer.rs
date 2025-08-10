@@ -26,6 +26,45 @@ impl Lexer {
         l
     }
 
+
+    // Function to read char literals (single quotes)
+    fn read_char_literal(&mut self) -> String {
+        // Assumes current char is starting `'`
+        self.read_char(); // consume opening '
+
+        let start_pos = self.position;
+        let mut char_literal = String::new();
+
+        if self.ch == b'\\' {
+            // Escape sequence
+            self.read_char();
+            let escaped_char = match self.ch {
+                b'n' => '\n',
+                b't' => '\t',
+                b'r' => '\r',
+                b'\'' => '\'',
+                b'\\' => '\\',
+                other => other as char,
+            };
+            char_literal.push(escaped_char);
+            self.read_char();
+        } else {
+            char_literal.push(self.ch as char);
+            self.read_char();
+        }
+
+        if self.ch == b'\'' {
+            self.read_char(); // consume closing '
+        } else {
+            // Error: unterminated char literal - you may want to handle this better
+        }
+
+        char_literal
+    }
+
+
+
+
     // Advance reading position by one character and update current char
     fn read_char(&mut self) {
         if self.read_position >= self.input.len() {
@@ -166,8 +205,31 @@ impl Lexer {
             }
             b'/' => Token::new(TokenType::Slash, "/", self.line, self.column),
             b'*' => Token::new(TokenType::Asterisk, "*", self.line, self.column),
-            b'<' => Token::new(TokenType::Lt, "<", self.line, self.column),
-            b'>' => Token::new(TokenType::Gt, ">", self.line, self.column),
+
+            b'\'' => {
+                let literal = self.read_char_literal();
+                return Token::new(TokenType::Char, &literal, self.line, self.column);
+            }
+
+            b'<' => {
+                if self.peek_char() == b'<' {
+                    self.read_char();
+                    Token::new(TokenType::ShiftLeft, "<<", self.line, self.column)
+                } else {
+                    Token::new(TokenType::Lt, "<", self.line, self.column)
+                }
+            }
+            b'>' => {
+                if self.peek_char() == b'>' {
+                    self.read_char();
+                    Token::new(TokenType::ShiftRight, ">>", self.line, self.column)
+                } else {
+                    Token::new(TokenType::Gt, ">", self.line, self.column)
+                }
+            }
+
+
+
             b'{' => Token::new(TokenType::LBrace, "{", self.line, self.column),
             b'}' => Token::new(TokenType::RBrace, "}", self.line, self.column),
             b'"' => {
@@ -215,8 +277,8 @@ impl Lexer {
 
             b'0'..=b'9' => {
                 // Read integer literals (only digits)
-                let literal = self.read_number();
-                return Token::new(TokenType::Int, &literal, self.line, self.column);
+                let (literal, token_type) = self.read_number();
+                return Token::new(token_type, &literal, self.line, self.column);
             }
             0 => Token::new(TokenType::Eof, "", self.line, self.column), // End of input
             _ => Token::new(TokenType::Illegal, &(self.ch as char).to_string(), self.line, self.column), // Illegal/unknown token
@@ -285,16 +347,49 @@ impl Lexer {
         self.input[start_pos..self.position].to_string()
     }
 
-    // Read a number literal: sequence of ASCII digits
-    fn read_number(&mut self) -> String {
+    // Reads a numeric literal and determines its type: Int, Float, Double, Decimal, Complex
+    fn read_number(&mut self) -> (String, TokenType) {
         let start_pos = self.position;
+        let mut has_dot = false;
+        let mut has_exp = false;
+        let mut has_i = false; // For complex numbers (e.g. 3.14i)
+        let mut token_type = TokenType::Int;
 
-        while self.ch.is_ascii_digit() {
+        while {
+            let c = self.ch as char;
+            if c.is_ascii_digit() {
+                true
+            } else if c == '.' && !has_dot && !has_i {
+                has_dot = true;
+                token_type = TokenType::Float;
+                true
+            } else if (c == 'e' || c == 'E') && !has_exp && !has_i {
+                has_exp = true;
+                token_type = TokenType::Double; // scientific notation => double precision
+                true
+            } else if (c == '+' || c == '-') && has_exp {
+                // allow signs in exponent part
+                true
+            } else if c == 'i' && !has_i {
+                has_i = true;
+                token_type = TokenType::Complex;
+                true
+            } else if c == 'm' || c == 'M' {
+                // e.g. decimal literals may have suffix 'm' (like C#)
+                token_type = TokenType::Decimal;
+                true
+            } else {
+                false
+            }
+        } {
             self.read_char();
         }
 
-        self.input[start_pos..self.position].to_string()
+        let literal = self.input[start_pos..self.position].to_string();
+
+        (literal, token_type)
     }
+
 
     // Read a string literal enclosed in double quotes
     fn read_string(&mut self) -> String {
