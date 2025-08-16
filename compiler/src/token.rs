@@ -4,26 +4,49 @@ use std::fmt;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 
+/// Categories for tokens, useful for classification and parsing logic.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum TokenCategory {
+    Illegal,
+    Eof,
+    Identifier,
+    Literal,
+    Operator,
+    BitwiseOperator,
+    Delimiter,
+    Keyword,
+    Comment,
+    Loop,
+    Module,
+    ExceptionHandling,
+    TypeSystem,
+    DataStructure,
+    Async,
+    Reserved, // Reserved or disabled tokens for future use
+}
+
 /// Enum representing all possible token types recognized by the B+ compiler.
 #[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum TokenType {
+    // Special tokens
     Illegal,      // Unknown or invalid token
     Eof,          // End of file/input
 
-    // Identifiers and literal types
+    // Identifiers and literals
     Ident,        // Variable/function names
     Int,          // Integer literals
     Float,        // Floating point literals
-    Double,     // double precision float
-    Complex,    // complex number
-    Decimal,    // high precision decimal
-    Bool,       // boolean true/false (optional, you have Ha/Na)
-    Vector,     // vector type (optional)
-    Matrix,     // matrix type (optional)
-    Char,
+    Double,       // Double precision float
+    Complex,      // Complex number
+    Decimal,      // High precision decimal
+    Bool,         // Boolean literal (true/false) -- NOTE: Your language uses Ha/Na keywords for bool, consider usage
+    Vector,       // Vector type (optional)
+    Matrix,       // Matrix type (optional)
+    Char,         // Character literals
     List,         // List literals
     Set,          // Set literals
     String,       // String literals
+    Object,       // Object literals (added to match KEYWORDS)
 
     // Operators
     Assign,       // =
@@ -39,15 +62,13 @@ pub enum TokenType {
     GtEq,         // >=
     NotEq,        // !=
 
-
-
     // Bitwise Operators
-    Ampersand,     // &
-    Pipe,          // |
-    Caret,         // ^
-    Tilde,         // ~
-    ShiftLeft,     // <<
-    ShiftRight,    // >>
+    Ampersand,    // &
+    Pipe,         // |
+    Caret,        // ^
+    Tilde,        // ~
+    ShiftLeft,    // <<
+    ShiftRight,   // >>
 
     // Delimiters and punctuation
     Comma,        // ,
@@ -64,8 +85,8 @@ pub enum TokenType {
     // Language keywords (Banglish)
     Function,     // function keyword
     Dhoro,        // let/variable declaration
-    Ha,           // true boolean literal
-    Na,           // false boolean literal
+    Ha,           // true boolean literal keyword
+    Na,           // false boolean literal keyword
     Jodi,         // if conditional start
     Hoy,          // condition connector (like "is")
     Tahole,       // then keyword
@@ -93,37 +114,144 @@ pub enum TokenType {
     Protibar,
 
     // Module system
-    ImportKoro,     // import
-    ExportKoro,     // export
-    Module,         // module
-    EiHisebe,         // as (aliasing)
+    ImportKoro,
+    ExportKoro,
+    Module,
+    EiHisebe,     // as (aliasing)
 
     // Exception handling
-    CheshtaKoro,    // try
-    DhoreFelo,      // catch
-    Oboseshe,       // finally
-    ThrowKoro,      // throw
+    CheshtaKoro,
+    DhoreFelo,
+    Oboseshe,
+    ThrowKoro,
 
     // Type system
-    TypeBanao,      // type keyword
-    Dhoroner,       // typeof
-    Kisuna,         // null/none
+    TypeBanao,
+    Dhoroner,
+    Kisuna,       // null/none
 
     // Data structures
-    Talika,         // list (array)
-    Object,         // map (dictionary)
-    Arrow,          // ->
-    DoubleColon,    // ::
+    Talika,
+    Arrow,
+    DoubleColon,
 
     // Async
-    OpekkhaKoro,    // await
-    ShomoyNiropekho,   // async
+    OpekkhaKoro,
+    ShomoyNiropekho,
 
-    // Macro,
+    // Reserved / Future use tokens
     // AttributeStart,
     // AttributeEnd,
+    // Macro,
+}
 
+impl TokenType {
+    /// Returns the category of the token type.
+    pub fn category(&self) -> TokenCategory {
+        match self {
+            TokenType::Illegal => TokenCategory::Illegal,
+            TokenType::Eof => TokenCategory::Eof,
 
+            TokenType::Ident => TokenCategory::Identifier,
+            
+            TokenType::Int 
+            | TokenType::Float 
+            | TokenType::Double 
+            | TokenType::Complex 
+            | TokenType::Decimal 
+            | TokenType::Bool 
+            | TokenType::Char
+            | TokenType::String 
+            | TokenType::List 
+            | TokenType::Set 
+            | TokenType::Object 
+            | TokenType::Vector 
+            | TokenType::Matrix => TokenCategory::Literal,
+
+            TokenType::Assign 
+            | TokenType::Plus 
+            | TokenType::Minus 
+            | TokenType::Bang 
+            | TokenType::Asterisk 
+            | TokenType::Slash 
+            | TokenType::Lt 
+            | TokenType::Gt 
+            | TokenType::Eq 
+            | TokenType::LtEq 
+            | TokenType::GtEq 
+            | TokenType::NotEq => TokenCategory::Operator,
+
+            TokenType::Ampersand 
+            | TokenType::Pipe 
+            | TokenType::Caret 
+            | TokenType::Tilde 
+            | TokenType::ShiftLeft 
+            | TokenType::ShiftRight => TokenCategory::BitwiseOperator,
+
+            TokenType::Comma 
+            | TokenType::Semicolon 
+            | TokenType::LParen 
+            | TokenType::RParen 
+            | TokenType::LBrace 
+            | TokenType::RBrace 
+            | TokenType::LBracket 
+            | TokenType::RBracket 
+            | TokenType::Fullstop 
+            | TokenType::Colon => TokenCategory::Delimiter,
+
+            TokenType::Function 
+            | TokenType::Dhoro 
+            | TokenType::Ha 
+            | TokenType::Na 
+            | TokenType::Jodi 
+            | TokenType::Hoy 
+            | TokenType::Tahole 
+            | TokenType::Nahoy 
+            | TokenType::Othoba 
+            | TokenType::Ebong
+            | TokenType::ReturnKoro 
+            | TokenType::Dekhao 
+            | TokenType::InputNao 
+            | TokenType::Shomoy => TokenCategory::Keyword,
+
+            TokenType::EkLineMontobbo 
+            | TokenType::BohuLineMontobboShuru 
+            | TokenType::BohuLineMontobboShesh => TokenCategory::Comment,
+
+            TokenType::Jotokhon 
+            | TokenType::AgeKoro 
+            | TokenType::ErJonno 
+            | TokenType::ProtitarJonno 
+            | TokenType::Choluk 
+            | TokenType::Thamo 
+            | TokenType::Jekhane 
+            | TokenType::Protibar => TokenCategory::Loop,
+
+            TokenType::ImportKoro 
+            | TokenType::ExportKoro 
+            | TokenType::Module 
+            | TokenType::EiHisebe => TokenCategory::Module,
+
+            TokenType::CheshtaKoro 
+            | TokenType::DhoreFelo 
+            | TokenType::Oboseshe 
+            | TokenType::ThrowKoro => TokenCategory::ExceptionHandling,
+
+            TokenType::TypeBanao 
+            | TokenType::Dhoroner 
+            | TokenType::Kisuna => TokenCategory::TypeSystem,
+
+            TokenType::Talika 
+            | TokenType::Arrow 
+            | TokenType::DoubleColon => TokenCategory::DataStructure,
+
+            TokenType::OpekkhaKoro 
+            | TokenType::ShomoyNiropekho => TokenCategory::Async,
+
+            // Reserved tokens could be added here if enabled later
+            // _ => TokenCategory::Reserved,
+        }
+    }
 }
 
 /// Struct representing a token, consisting of type, literal, and position info.
@@ -165,9 +293,17 @@ impl fmt::Display for TokenType {
             TokenType::Ident => "Ident",
             TokenType::Int => "Int",
             TokenType::Float => "Float",
+            TokenType::Double => "Double",
+            TokenType::Complex => "Complex",
+            TokenType::Decimal => "Decimal",
+            TokenType::Bool => "Bool",
+            TokenType::Vector => "Vector",
+            TokenType::Matrix => "Matrix",
+            TokenType::Char => "Char",
             TokenType::List => "List",
             TokenType::Set => "Set",
             TokenType::String => "String",
+            TokenType::Object => "Object",
 
             TokenType::Assign => "=",
             TokenType::Plus => "+",
@@ -182,6 +318,13 @@ impl fmt::Display for TokenType {
             TokenType::GtEq => ">=",
             TokenType::NotEq => "!=",
 
+            TokenType::Ampersand => "&",
+            TokenType::Pipe => "|",
+            TokenType::Caret => "^",
+            TokenType::Tilde => "~",
+            TokenType::ShiftLeft => "<<",
+            TokenType::ShiftRight => ">>",
+
             TokenType::Comma => ",",
             TokenType::Semicolon => ";",
             TokenType::LParen => "(",
@@ -190,7 +333,6 @@ impl fmt::Display for TokenType {
             TokenType::RBrace => "}",
             TokenType::LBracket => "[",
             TokenType::RBracket => "]",
-
             TokenType::Fullstop => ".",
             TokenType::Colon => ":",
 
@@ -226,21 +368,22 @@ impl fmt::Display for TokenType {
             TokenType::ExportKoro => "export koro",
             TokenType::Module => "module",
             TokenType::EiHisebe => "ei hisebe",
+
             TokenType::CheshtaKoro => "cheshta koro",
             TokenType::DhoreFelo => "dhore felo",
             TokenType::Oboseshe => "oboseshe",
             TokenType::ThrowKoro => "throw koro",
+
             TokenType::TypeBanao => "type banao",
             TokenType::Dhoroner => "dhoroner",
             TokenType::Kisuna => "kisuna",
+
             TokenType::Talika => "talika",
-            TokenType::Object => "object",
             TokenType::Arrow => "->",
             TokenType::DoubleColon => "::",
+
             TokenType::OpekkhaKoro => "opekkha koro",
             TokenType::ShomoyNiropekho => "shomoy niropekkho",
-
-
         };
         write!(f, "{}", s)
     }
@@ -312,7 +455,6 @@ pub static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     map.insert("ba", TokenType::Othoba);
     map.insert("or", TokenType::Othoba);
 
-
     // Return statement variants
     map.insert("ferot", TokenType::ReturnKoro);
     map.insert("ferot koro", TokenType::ReturnKoro);
@@ -369,7 +511,6 @@ pub static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     map.insert("jekhane", TokenType::Jekhane);
     map.insert("protibar", TokenType::Protibar);
 
-
     // Module system
     map.insert("amdani koro", TokenType::ImportKoro);
     map.insert("import", TokenType::ImportKoro);
@@ -423,49 +564,46 @@ pub static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     map.insert("asynchronous", TokenType::ShomoyNiropekho);
     map.insert("async", TokenType::ShomoyNiropekho);
 
-
     map
 });
 
-/// Look up the token type for a given identifier string.
+/// Lookup a keyword or identifier and return its token type.
+/// If no keyword match, returns TokenType::Ident.
 pub fn lookup_ident(ident: &str) -> TokenType {
     if let Some(&tok_type) = KEYWORDS.get(ident) {
         return tok_type;
     }
 
-    if ident.chars().any(|c| c.is_uppercase() || c.is_whitespace()) {
-        let normalized = normalize_keyword(ident);
-        if let Some(&tok_type) = KEYWORDS.get(normalized.as_str()) {
-            return tok_type;
-        }
+    // Try normalized variant with lowercase and collapsed whitespace
+    let normalized = normalize_keyword(ident);
+    if let Some(&tok_type) = KEYWORDS.get(normalized.as_str()) {
+        return tok_type;
     }
 
     TokenType::Ident
 }
 
-
-/// Helper to check if a token is a literal (int, float, string, list, set).
+/// Helper: checks if token is a literal type
 pub fn is_literal(token_type: TokenType) -> bool {
     matches!(
         token_type,
         TokenType::Int
             | TokenType::Float
-            | TokenType::Double    
-            | TokenType::Complex  
-            | TokenType::Decimal  
-            | TokenType::Bool     
+            | TokenType::Double
+            | TokenType::Complex
+            | TokenType::Decimal
+            | TokenType::Bool
             | TokenType::Char
             | TokenType::String
             | TokenType::List
             | TokenType::Set
             | TokenType::Object
-            | TokenType::Vector   
-            | TokenType::Matrix   
+            | TokenType::Vector
+            | TokenType::Matrix
     )
 }
 
-
-/// Helper to check if a token is an operator (=, +, -, etc.).
+/// Helper: checks if token is an operator
 pub fn is_operator(token_type: TokenType) -> bool {
     matches!(
         token_type,
@@ -488,4 +626,62 @@ pub fn is_operator(token_type: TokenType) -> bool {
             | TokenType::ShiftLeft
             | TokenType::ShiftRight
     )
+}
+
+/// Helper: checks if token is a keyword
+pub fn is_keyword(token_type: TokenType) -> bool {
+    matches!(
+        token_type,
+        TokenType::Function
+            | TokenType::Dhoro
+            | TokenType::Ha
+            | TokenType::Na
+            | TokenType::Jodi
+            | TokenType::Hoy
+            | TokenType::Tahole
+            | TokenType::Nahoy
+            | TokenType::Othoba
+            | TokenType::Ebong
+            | TokenType::ReturnKoro
+            | TokenType::Dekhao
+            | TokenType::InputNao
+            | TokenType::Shomoy
+    )
+}
+
+/// Helper: checks if token is a loop keyword
+pub fn is_loop(token_type: TokenType) -> bool {
+    matches!(
+        token_type,
+        TokenType::Jotokhon
+            | TokenType::AgeKoro
+            | TokenType::ErJonno
+            | TokenType::ProtitarJonno
+            | TokenType::Choluk
+            | TokenType::Thamo
+            | TokenType::Jekhane
+            | TokenType::Protibar
+    )
+}
+
+/// Helper: checks if token is a comment token
+pub fn is_comment(token_type: TokenType) -> bool {
+    matches!(
+        token_type,
+        TokenType::EkLineMontobbo
+            | TokenType::BohuLineMontobboShuru
+            | TokenType::BohuLineMontobboShesh
+    )
+}
+
+/// Helper: checks if token is reserved (currently no reserved tokens enabled)
+pub fn is_reserved(_token_type: TokenType) -> bool {
+    // Uncomment when Reserved tokens are added
+    // matches!(
+    //     token_type,
+    //     TokenType::AttributeStart
+    //         | TokenType::AttributeEnd
+    //         | TokenType::Macro
+    // )
+    false
 }
