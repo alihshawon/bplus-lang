@@ -224,40 +224,48 @@ impl Lexer {
             }
             b'.' => Token::new(TokenType::Fullstop, ".", self.token_start_line, self.token_start_column),
 
-            _ if self.ch.is_ascii_alphabetic() || self.ch == b'_' || self.is_unicode_bengali_letter() => {
-                let first_literal = self.read_identifier();
-                self.skip_whitespace();
+_ if self.ch.is_ascii_alphabetic() || self.ch == b'_' || self.is_unicode_bengali_letter() => {
+    // প্রথম word পড়া
+    let first_word = self.read_identifier();
+    let mut literal = first_word.clone();
+    let mut token_type = lookup_ident(&literal);
 
-                // Multi-word keywords: try to consume as many words as possible to find longest match
-                let mut multi_word_literal = first_literal.clone();
-                let mut last_good_token = lookup_ident(&multi_word_literal);
-                let mut saved_state = (self.position, self.read_position, self.ch, self.line, self.column);
+    // multi-word keywords handle করার জন্য loop
+    loop {
+        let saved_pos = self.position;
+        let saved_read = self.read_position;
+        let saved_ch = self.ch;
+        let saved_line = self.line;
+        let saved_column = self.column;
 
-                loop {
-                    if !(self.ch.is_ascii_alphabetic() || self.ch == b'_' || self.is_unicode_bengali_letter()) {
-                        break;
-                    }
-                    let next_word = self.read_identifier();
-                    multi_word_literal = format!("{} {}", multi_word_literal, next_word);
+        self.skip_whitespace();
 
-                    let token_type = lookup_ident(&multi_word_literal);
-                    if token_type != TokenType::Ident {
-                        last_good_token = token_type;
-                        saved_state = (self.position, self.read_position, self.ch, self.line, self.column);
-                    } else {
-                        // No longer match, rewind to last good
-                        self.position = saved_state.0;
-                        self.read_position = saved_state.1;
-                        self.ch = saved_state.2;
-                        self.line = saved_state.3;
-                        self.column = saved_state.4;
-                        break;
-                    }
-                    self.skip_whitespace();
-                }
+        // পরের word পড়া
+        if self.ch.is_ascii_alphabetic() || self.ch == b'_' || self.is_unicode_bengali_letter() {
+            let next_word = self.read_identifier();
+            let candidate = format!("{} {}", literal, next_word);
+            let candidate_type = lookup_ident(&candidate);
 
-                Token::new(last_good_token, &multi_word_literal, self.token_start_line, self.token_start_column)
+            // যদি lookup match না করে, rewind
+            if candidate_type != TokenType::Ident {
+                literal = candidate;
+                token_type = candidate_type;
+            } else {
+                self.position = saved_pos;
+                self.read_position = saved_read;
+                self.ch = saved_ch;
+                self.line = saved_line;
+                self.column = saved_column;
+                break;
             }
+        } else {
+            break;
+        }
+    }
+
+    Token::new(token_type, &literal, self.token_start_line, self.token_start_column)
+}
+
 
             b'0'..=b'9' => {
                 let (literal, token_type) = self.read_number();

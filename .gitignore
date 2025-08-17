@@ -1,2 +1,8 @@
+# Rust build outputs
 compiler/target/
+compiler/target-*
+
+# Local Assistant folder
+.continue/
+ai/
 

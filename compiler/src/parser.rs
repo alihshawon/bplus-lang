@@ -70,7 +70,7 @@ peek_token: Token::new(TokenType::Illegal, "", 0, 0),
         p.register_infix(TokenType::Lt, Self::parse_infix_expression);
         p.register_infix(TokenType::Gt, Self::parse_infix_expression);
         p.register_infix(TokenType::Ebong, Self::parse_infix_expression); // Logical AND
-        p.register_infix(TokenType::Ba, Self::parse_infix_expression);    // Logical OR
+        p.register_infix(TokenType::Othoba, Self::parse_infix_expression);    // Logical OR
         p.register_infix(TokenType::LParen, Self::parse_call_expression);
 
         // Advance tokens twice to initialize cur_token and peek_token
@@ -225,16 +225,37 @@ peek_token: Token::new(TokenType::Illegal, "", 0, 0),
     }
 
     // Parse print (dekhao) expression
-    fn parse_print_expression(&mut self) -> Option<Expression> {
-        self.next_token(); // consume 'dekhao'
-        
-        let expr = self.parse_expression(Precedence::LOWEST)?;
-        
-        Some(Expression::Call {
-            function: Box::new(Expression::Identifier("dekhao".to_string())),
-            arguments: vec![expr],
-        })
-    }
+fn parse_print_expression(&mut self) -> Option<Expression> {
+    self.next_token(); // consume 'dekhao'
+
+    let expr = match self.cur_token.token_type {
+        TokenType::LParen => {
+            let e = self.parse_grouped_expression()?;
+            e
+        }
+        TokenType::LBrace => {
+            let stmts = self.parse_block_statement()?;
+            // Wrap block statements as a single expression (or first expression)
+            if !stmts.is_empty() {
+                match &stmts[0] {
+                    Statement::ExpressionStatement { expression } => expression.clone(),
+                    _ => Expression::Boolean(false),
+                }
+            } else {
+                Expression::Boolean(false)
+            }
+        }
+        _ => self.parse_expression(Precedence::LOWEST)?,
+    };
+
+    Some(Expression::Call {
+        function: Box::new(Expression::Identifier("dekhao".to_string())),
+        arguments: vec![expr],
+    })
+}
+
+
+
 
     // Parse grouped expression like (expr)
     fn parse_grouped_expression(&mut self) -> Option<Expression> {
@@ -278,9 +299,6 @@ peek_token: Token::new(TokenType::Illegal, "", 0, 0),
         // Parse else or else if alternatives
         let else_keywords = [
             TokenType::Nahoy,
-            TokenType::Noyto,
-            TokenType::Noile,
-            TokenType::Othoba,
         ];
 
         let mut alternative: Option<Box<Expression>> = None;
@@ -360,7 +378,7 @@ peek_token: Token::new(TokenType::Illegal, "", 0, 0),
             }
 
             // Allow only logical, comparison, and arithmetic operators in logical chain
-            if peek_type != TokenType::Ebong && peek_type != TokenType::Ba
+            if peek_type != TokenType::Ebong && peek_type != TokenType::Othoba
                 && peek_type != TokenType::Eq && peek_type != TokenType::NotEq
                 && peek_type != TokenType::Lt && peek_type != TokenType::Gt
                 && peek_type != TokenType::LtEq && peek_type != TokenType::GtEq
@@ -537,7 +555,7 @@ peek_token: Token::new(TokenType::Illegal, "", 0, 0),
             TokenType::Slash | TokenType::Asterisk => Precedence::PRODUCT,
             TokenType::LParen => Precedence::CALL,
             TokenType::Ebong => Precedence::EQUALS, // logical AND
-            TokenType::Ba => Precedence::EQUALS,    // logical OR
+            TokenType::Othoba => Precedence::EQUALS,    // logical OR
             _ => Precedence::LOWEST,
         }
     }

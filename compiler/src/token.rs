@@ -685,3 +685,16 @@ pub fn is_reserved(_token_type: TokenType) -> bool {
     // )
     false
 }
+
+pub static RESERVED_KEYWORDS: &[&str] = &[
+    "jodi",
+    "nahoy",
+    "ha",
+    "na",
+    "dhoro",
+    "returnkoro",
+    "dekhao",
+    "inputnao",
+    "function",
+    // ... rest reserved keywords that can't be used as variable names.
+];
