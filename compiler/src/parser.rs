@@ -257,7 +257,7 @@ peek_token: Token::new(TokenType::Illegal, "", 0, 0),
         })
     }
 
-    // New helper function to parse template literals like {(name) is (status)}
+    // New helper function to parse template literals like dekhao {(name) is (status)}
     fn parse_template_literal(&mut self) -> Option<Vec<Expression>> {
         let mut parts = Vec::new();
         self.next_token(); // consume '{'
