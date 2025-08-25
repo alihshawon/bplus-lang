@@ -180,31 +180,68 @@ fn eval_expression(expr: Expression, env: &mut Environment) -> Object {
         }
 
         // Function call expression
-        Expression::Call { function, arguments } => {
-            let function_obj = eval_expression(*function, env);
-            if is_error(&function_obj) {
-                return function_obj;
-            }
+            Expression::Call { function, arguments } => {
+                // Evaluate the function itself
+                let function_obj = eval_expression(*function.clone(), env);
+                if is_error(&function_obj) {
+                    return function_obj;
+                }
 
-            // Resolve built-in aliases to native functions
-            let function_obj = match &function_obj {
-                Object::BuiltinFunction(bf) => {
-                    match bf {
-                        BuiltinFunction::Input => Object::BuiltinNative(crate::object::builtin_input),
-                        BuiltinFunction::Print => Object::BuiltinNative(crate::object::builtin_print),
-                        _ => function_obj.clone(),
+                // Handle "dekhao" function with template literal support
+                if let Expression::Identifier(ref name) = *function {
+                    if name == "dekhao" {
+                        let mut output = String::new();
+
+                        // Check if first argument is a template literal
+                        if let Some(Expression::TemplateLiteral { parts }) = arguments.get(0) {
+                            for part in parts {
+                                let val = match part {
+                                    Expression::StringLiteral(s) => Object::String(s.clone()),
+                                    expr => eval_expression(expr.clone(), env),
+                                };
+                                match val {
+                                    Object::String(s) => output.push_str(&s),
+                                    Object::Integer(i) => output.push_str(&i.to_string()),
+                                    Object::Boolean(b) => output.push_str(if b { "Ha" } else { "Na" }),
+                                    Object::Null => output.push_str("Null"),
+                                    Object::Error(ref e) => return Object::Error(e.clone()),
+                                    _ => output.push_str(&format!("{:?}", val)),
+                                }
+                            }
+                            println!("{}", output);
+                            return Object::Null;
+                        }
+
+                        // Fallback for regular single or multiple arguments
+                        for arg in arguments {
+                            let val = eval_expression(arg, env);
+                            if is_error(&val) {
+                                return val;
+                            }
+                            match val {
+                                Object::String(s) => output.push_str(&s),
+                                Object::Integer(i) => output.push_str(&i.to_string()),
+                                Object::Boolean(b) => output.push_str(if b { "Ha" } else { "Na" }),
+                                Object::Null => output.push_str("Null"),
+                                Object::Error(ref e) => return Object::Error(e.clone()),
+                                _ => output.push_str(&format!("{:?}", val)),
+                            }
+                        }
+                        println!("{}", output);
+                        return Object::Null;
                     }
                 }
-                _ => function_obj.clone(),
-            };
 
-            let args = eval_expressions(arguments, env);
-            if args.len() == 1 && is_error(&args[0]) {
-                return args[0].clone();
+                // Regular function call fallback
+                let args = eval_expressions(arguments, env);
+                if args.len() == 1 && is_error(&args[0]) {
+                    return args[0].clone();
+                }
+
+                apply_function(function_obj, args)
             }
 
-            apply_function(function_obj, args)
-        }
+
     }
 }
 
