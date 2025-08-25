@@ -225,34 +225,66 @@ peek_token: Token::new(TokenType::Illegal, "", 0, 0),
     }
 
     // Parse print (dekhao) expression
-fn parse_print_expression(&mut self) -> Option<Expression> {
-    self.next_token(); // consume 'dekhao'
 
-    let expr = match self.cur_token.token_type {
-        TokenType::LParen => {
-            let e = self.parse_grouped_expression()?;
-            e
-        }
-        TokenType::LBrace => {
-            let stmts = self.parse_block_statement()?;
-            // Wrap block statements as a single expression (or first expression)
-            if !stmts.is_empty() {
-                match &stmts[0] {
-                    Statement::ExpressionStatement { expression } => expression.clone(),
-                    _ => Expression::Boolean(false),
-                }
-            } else {
-                Expression::Boolean(false)
+    fn parse_print_expression(&mut self) -> Option<Expression> {
+        self.next_token(); // consume 'dekhao'
+
+        // Check the next token to decide what kind of expression we are parsing
+        let expr = match self.cur_token.token_type {
+            TokenType::LParen => {
+                // dekhao(expr) or dekhao (expr)
+                let e = self.parse_grouped_expression()?;
+                e
             }
-        }
-        _ => self.parse_expression(Precedence::LOWEST)?,
-    };
+            TokenType::LBrace => {
+                // dekhao { ... }  -> template literal
+                let template_tokens = self.parse_template_literal()?;
+                Expression::TemplateLiteral { parts: template_tokens }
+            }
+            TokenType::String | TokenType::Int | TokenType::Ident | TokenType::Minus | TokenType::Bang => {
+                // bare expression or string literal
+                self.parse_expression(Precedence::LOWEST)?
+            }
+            _ => {
+                // fallback: treat it as bare expression
+                self.parse_expression(Precedence::LOWEST)?
+            }
+        };
 
-    Some(Expression::Call {
-        function: Box::new(Expression::Identifier("dekhao".to_string())),
-        arguments: vec![expr],
-    })
-}
+        Some(Expression::Call {
+            function: Box::new(Expression::Identifier("dekhao".to_string())),
+            arguments: vec![expr],
+        })
+    }
+
+    // New helper function to parse template literals like {(name) is (status)}
+    fn parse_template_literal(&mut self) -> Option<Vec<Expression>> {
+        let mut parts = Vec::new();
+        self.next_token(); // consume '{'
+
+        while !self.cur_token_is(TokenType::RBrace) && !self.cur_token_is(TokenType::Eof) {
+            match self.cur_token.token_type {
+                TokenType::LParen => {
+                    // expression inside parentheses
+                    self.next_token();
+                    let expr = self.parse_expression(Precedence::LOWEST)?;
+                    if !self.expect_peek(TokenType::RParen) {
+                        return None;
+                    }
+                    parts.push(expr);
+                }
+                TokenType::Ident | TokenType::String | TokenType::Int => {
+                    // literal text outside parentheses
+                    parts.push(Expression::StringLiteral(self.cur_token.literal.clone()));
+                }
+                _ => {}
+            }
+            self.next_token();
+        }
+
+        Some(parts)
+    }
+
 
 
 

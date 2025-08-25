@@ -408,6 +408,8 @@ pub static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     map.insert("dhori", TokenType::Dhoro);
     map.insert("monekori", TokenType::Dhoro);
     map.insert("monekoro", TokenType::Dhoro);
+    map.insert("mone kori", TokenType::Dhoro);
+    map.insert("mone koro", TokenType::Dhoro);
 
     // Function keywords
     map.insert("kaj", TokenType::Function);

@@ -1,0 +1,36 @@
+project_name: bplus
+builds:
+  - id: bplus
+    main: ./cmd/bplus
+    binary: bplus
+    ldflags:
+      - -X github.com.alihshawon.bplus-lang/cli/internal/version.Version={{.Version}}
+      - -X github.com.alihshawon.bplus-lang/cli/internal/version.Commit={{.FullCommit}}
+      - -X github.com.alihshawon.bplus-lang/cli/internal/version.Date={{.Date}}
+    goos: [linux, windows, darwin]
+    goarch: [amd64, arm64]
+  - id: bpm
+    main: ./cmd/bpm
+    binary: bpm
+    ldflags:
+      - -X github.com.alihshawon.bplus-lang/cli/internal/version.Version={{.Version}}
+      - -X github.com.alihshawon.bplus-lang/cli/internal/version.Commit={{.FullCommit}}
+      - -X github.com.alihshawon.bplus-lang/cli/internal/version.Date={{.Date}}
+    goos: [linux, windows, darwin]
+    goarch: [amd64, arm64]
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE*
+      - README*
+  - id: zip-archives
+    format: zip
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE*
+      - README*
+
+changelog:
+  use: git
