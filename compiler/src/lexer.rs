@@ -414,7 +414,7 @@ _ if self.ch.is_ascii_alphabetic() || self.ch == b'_' || self.is_unicode_bengali
         let s = &self.input[self.position..];
         if let Some(ch) = s.chars().next() {
             // Bengali Unicode block range: U+0980 to U+09FF
-            (ch >= '\u{0980}' && ch <= '\u{09FF}')
+            ch >= '\u{0980}' && ch <= '\u{09FF}'
         } else {
             false
         }

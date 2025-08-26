@@ -1,6 +1,5 @@
 // compiler/src/evaluator.rs
 
-
 // Imports required modules from the project and standard library
 use crate::ast::{Expression, Program, Statement};
 use crate::environment::Environment;
@@ -34,16 +33,35 @@ fn eval_statement(statement: Statement, env: &mut Environment) -> Object {
         Statement::ExpressionStatement { expression } => eval_expression(expression, env),
 
         // Handle variable declaration
-        Statement::Let { name, value } => {
+        Statement::Let { name, value, mutable } => {
+            let val = eval_expression(value, env);
+            if is_error(&val) { return val; }
+            if let Expression::Identifier(ident_name) = name {
+                env.set(ident_name, val, mutable);
+            } else {
+                return Object::Error("invalid let target".to_string());
+            }
+            Object::Null
+        }
+
+
+        Statement::Assign { name, value } => {
             let val = eval_expression(value, env);
             if is_error(&val) {
                 return val;
             }
+
             if let Expression::Identifier(ident_name) = name {
-                env.set(ident_name, val);
+                env.set(ident_name.clone(), val.clone(), true); // true = mutable
+                val
+            } else {
+                Object::Error("invalid assignment target".to_string())
             }
-            Object::Null
-        }
+        },
+
+        
+        Statement::Expression(expr) => eval_expression(expr, env),
+
 
         // Handle return statements
         Statement::Return { return_value } => {
@@ -127,44 +145,41 @@ fn eval_block_statement(statements: Vec<Statement>, env: &mut Environment) -> Ob
 // Evaluates an expression
 fn eval_expression(expr: Expression, env: &mut Environment) -> Object {
     match expr {
+        // Integer literal
         Expression::IntegerLiteral(value) => Object::Integer(value),
+
+        // String literal
         Expression::StringLiteral(value) => Object::String(value),
+
+        // Boolean literal
         Expression::Boolean(value) => Object::Boolean(value),
 
-        // Evaluate prefix expressions like ! or -
+        // Prefix expressions like ! or -
         Expression::Prefix { operator, right } => {
             let right = eval_expression(*right, env);
-            if is_error(&right) {
-                return right;
-            }
+            if is_error(&right) { return right; }
             eval_prefix_expression(&operator, right)
         }
 
-        // Evaluate infix expressions like +, -, ==, etc.
+        // Infix expressions like +, -, *, /, ==, !=, <, >
         Expression::Infix { left, operator, right } => {
             let left = eval_expression(*left, env);
-            if is_error(&left) {
-                return left;
-            }
+            if is_error(&left) { return left; }
             let right = eval_expression(*right, env);
-            if is_error(&right) {
-                return right;
-            }
+            if is_error(&right) { return right; }
             eval_infix_expression(&operator, left, right)
         }
 
-        // Resolve variable from environment
+        // Variable lookup in environment
         Expression::Identifier(name) => match env.get(&name) {
             Some(obj) => obj,
             None => Object::Error(format!("identifier not found: {}", name)),
         },
 
-        // If expression (conditional)
+        // Conditional expressions
         Expression::If { condition, consequence, alternative } => {
             let condition_obj = eval_expression(*condition, env);
-            if is_error(&condition_obj) {
-                return condition_obj;
-            }
+            if is_error(&condition_obj) { return condition_obj; }
             if is_truthy(&condition_obj) {
                 eval_block_statement(consequence, env)
             } else if let Some(alt_expr) = alternative {
@@ -172,52 +187,31 @@ fn eval_expression(expr: Expression, env: &mut Environment) -> Object {
             } else {
                 Object::Null
             }
-        }
+        },
 
         // Function literal creation
         Expression::FunctionLiteral { parameters, body } => {
             Object::Function { parameters, body, env: env.clone() }
-        }
+        },
 
         // Function call expression
-            Expression::Call { function, arguments } => {
-                // Evaluate the function itself
-                let function_obj = eval_expression(*function.clone(), env);
-                if is_error(&function_obj) {
-                    return function_obj;
-                }
+        Expression::Call { function, arguments } => {
+            // Evaluate the function itself
+            let function_obj = eval_expression(*function.clone(), env);
+            if is_error(&function_obj) { return function_obj; }
 
-                // Handle "dekhao" function with template literal support
-                if let Expression::Identifier(ref name) = *function {
-                    if name == "dekhao" {
-                        let mut output = String::new();
+            // Handle "dekhao" builtin with template literal support
+            if let Expression::Identifier(ref name) = *function {
+                if name == "dekhao" {
+                    let mut output = String::new();
 
-                        // Check if first argument is a template literal
-                        if let Some(Expression::TemplateLiteral { parts }) = arguments.get(0) {
-                            for part in parts {
-                                let val = match part {
-                                    Expression::StringLiteral(s) => Object::String(s.clone()),
-                                    expr => eval_expression(expr.clone(), env),
-                                };
-                                match val {
-                                    Object::String(s) => output.push_str(&s),
-                                    Object::Integer(i) => output.push_str(&i.to_string()),
-                                    Object::Boolean(b) => output.push_str(if b { "Ha" } else { "Na" }),
-                                    Object::Null => output.push_str("Null"),
-                                    Object::Error(ref e) => return Object::Error(e.clone()),
-                                    _ => output.push_str(&format!("{:?}", val)),
-                                }
-                            }
-                            println!("{}", output);
-                            return Object::Null;
-                        }
-
-                        // Fallback for regular single or multiple arguments
-                        for arg in arguments {
-                            let val = eval_expression(arg, env);
-                            if is_error(&val) {
-                                return val;
-                            }
+                    // Check if first argument is a template literal
+                    if let Some(Expression::TemplateLiteral { parts }) = arguments.get(0) {
+                        for part in parts {
+                            let val = match part {
+                                Expression::StringLiteral(s) => Object::String(s.clone()),
+                                expr => eval_expression(expr.clone(), env),
+                            };
                             match val {
                                 Object::String(s) => output.push_str(&s),
                                 Object::Integer(i) => output.push_str(&i.to_string()),
@@ -230,20 +224,53 @@ fn eval_expression(expr: Expression, env: &mut Environment) -> Object {
                         println!("{}", output);
                         return Object::Null;
                     }
-                }
 
-                // Regular function call fallback
-                let args = eval_expressions(arguments, env);
-                if args.len() == 1 && is_error(&args[0]) {
-                    return args[0].clone();
+                    // Fallback for regular single/multiple arguments
+                    for arg in arguments {
+                        let val = eval_expression(arg, env);
+                        if is_error(&val) { return val; }
+                        match val {
+                            Object::String(s) => output.push_str(&s),
+                            Object::Integer(i) => output.push_str(&i.to_string()),
+                            Object::Boolean(b) => output.push_str(if b { "Ha" } else { "Na" }),
+                            Object::Null => output.push_str("Null"),
+                            Object::Error(ref e) => return Object::Error(e.clone()),
+                            _ => output.push_str(&format!("{:?}", val)),
+                        }
+                    }
+                    println!("{}", output);
+                    return Object::Null;
                 }
-
-                apply_function(function_obj, args)
             }
 
+            // Evaluate all arguments and apply function
+            let args = eval_expressions(arguments, env);
+            if args.len() == 1 && is_error(&args[0]) {
+                return args[0].clone();
+            }
+            apply_function(function_obj, args)
+        },
 
+        // TemplateLiteral evaluation for general expressions
+        Expression::TemplateLiteral { parts } => {
+            // Concatenate all parts into a single string
+            let mut result = String::new();
+            for part in parts {
+                let val = eval_expression(part.clone(), env);
+                match val {
+                    Object::String(s) => result.push_str(&s),
+                    Object::Integer(i) => result.push_str(&i.to_string()),
+                    Object::Boolean(b) => result.push_str(if b { "Ha" } else { "Na" }),
+                    Object::Null => result.push_str("Null"),
+                    Object::Error(ref e) => return Object::Error(e.clone()),
+                    _ => result.push_str(&format!("{:?}", val)),
+                }
+            }
+            Object::String(result)
+        },
     }
 }
+
 
 // Evaluates prefix operations like !value or -value
 fn eval_prefix_expression(operator: &str, right: Object) -> Object {
@@ -350,7 +377,7 @@ fn apply_function(func: Object, args: Vec<Object>) -> Object {
             // Bind arguments to parameter names
             for (param, arg) in parameters.iter().zip(args.iter()) {
                 if let Expression::Identifier(param_name) = param {
-                    extended_env.set(param_name.clone(), arg.clone());
+                    extended_env.set(param_name.clone(), arg.clone(), true);
                 }
             }
 

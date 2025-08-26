@@ -5,148 +5,249 @@ use once_cell::sync::Lazy;
 use std::collections::HashMap;
 
 /// Categories for tokens, useful for classification and parsing logic.
+/// Each token type belongs to exactly one category for consistent classification.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum TokenCategory {
+    /// Invalid or unrecognized tokens
     Illegal,
+    /// End of file marker
     Eof,
+    /// Variable and function names
     Identifier,
+    /// Numeric and string literals
     Literal,
+    /// Arithmetic and comparison operators
     Operator,
+    /// Bitwise manipulation operators
     BitwiseOperator,
+    /// Punctuation and structural delimiters
     Delimiter,
+    /// Language keywords and built-in functions
     Keyword,
+    /// Comment markers and content
     Comment,
+    /// Loop control keywords
     Loop,
+    /// Module system keywords
     Module,
+    /// Exception handling keywords
     ExceptionHandling,
+    /// Type system keywords
     TypeSystem,
+    /// Data structure keywords
     DataStructure,
+    /// Asynchronous programming keywords
     Async,
-    Reserved, // Reserved or disabled tokens for future use
+    /// Reserved tokens for future language features
+    Reserved,
 }
 
 /// Enum representing all possible token types recognized by the B+ compiler.
+/// Each variant corresponds to a specific lexical element in the B+ language.
 #[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum TokenType {
     // Special tokens
-    Illegal,      // Unknown or invalid token
-    Eof,          // End of file/input
+    /// Unknown or invalid token
+    Illegal,
+    /// End of file/input
+    Eof,
 
     // Identifiers and literals
-    Ident,        // Variable/function names
-    Int,          // Integer literals
-    Float,        // Floating point literals
-    Double,       // Double precision float
-    Complex,      // Complex number
-    Decimal,      // High precision decimal
-    Bool,         // Boolean literal (true/false) -- NOTE: Your language uses Ha/Na keywords for bool, consider usage
-    Vector,       // Vector type (optional)
-    Matrix,       // Matrix type (optional)
-    Char,         // Character literals
-    List,         // List literals
-    Set,          // Set literals
-    String,       // String literals
-    Object,       // Object literals (added to match KEYWORDS)
+    /// Variable/function names
+    Ident,
+    /// Integer literals
+    Int,
+    /// Floating point literals
+    Float,
+    /// Double precision float
+    Double,
+    /// Complex number
+    Complex,
+    /// High precision decimal
+    Decimal,
+    /// Boolean literal (true/false) - NOTE: B+ uses Ha/Na keywords for bool
+    Bool,
+    /// Vector type (optional)
+    Vector,
+    /// Matrix type (optional)
+    Matrix,
+    /// Character literals
+    Char,
+    /// List literals
+    List,
+    /// Set literals
+    Set,
+    /// String literals
+    String,
+    /// Object literals
+    Object,
 
     // Operators
-    Assign,       // =
-    Plus,         // +
-    Minus,        // -
-    Bang,         // !
-    Asterisk,     // *
-    Slash,        // /
-    Lt,           // <
-    Gt,           // >
-    Eq,           // ==
-    LtEq,         // <=
-    GtEq,         // >=
-    NotEq,        // !=
+    /// Assignment operator =
+    Assign,
+    /// Addition operator +
+    Plus,
+    /// Subtraction operator -
+    Minus,
+    /// Logical not operator !
+    Bang,
+    /// Multiplication operator *
+    Asterisk,
+    /// Division operator /
+    Slash,
+    /// Less than operator <
+    Lt,
+    /// Greater than operator >
+    Gt,
+    /// Equality operator ==
+    Eq,
+    /// Less than or equal operator <=
+    LtEq,
+    /// Greater than or equal operator >=
+    GtEq,
+    /// Not equal operator !=
+    NotEq,
 
     // Bitwise Operators
-    Ampersand,    // &
-    Pipe,         // |
-    Caret,        // ^
-    Tilde,        // ~
-    ShiftLeft,    // <<
-    ShiftRight,   // >>
+    /// Bitwise AND &
+    Ampersand,
+    /// Bitwise OR |
+    Pipe,
+    /// Bitwise XOR ^
+    Caret,
+    /// Bitwise NOT ~
+    Tilde,
+    /// Left shift <<
+    ShiftLeft,
+    /// Right shift >>
+    ShiftRight,
 
     // Delimiters and punctuation
-    Comma,        // ,
-    Semicolon,    // ;
-    LParen,       // (
-    RParen,       // )
-    LBrace,       // {
-    RBrace,       // }
-    LBracket,     // [
-    RBracket,     // ]
-    Fullstop,     // .
-    Colon,        // :
+    /// Comma ,
+    Comma,
+    /// Semicolon ;
+    Semicolon,
+    /// Left parenthesis (
+    LParen,
+    /// Right parenthesis )
+    RParen,
+    /// Left brace {
+    LBrace,
+    /// Right brace }
+    RBrace,
+    /// Left bracket [
+    LBracket,
+    /// Right bracket ]
+    RBracket,
+    /// Dot/period .
+    Fullstop,
+    /// Colon :
+    Colon,
 
     // Language keywords (Banglish)
-    Function,     // function keyword
-    Dhoro,        // let/variable declaration
-    Ha,           // true boolean literal keyword
-    Na,           // false boolean literal keyword
-    Jodi,         // if conditional start
-    Hoy,          // condition connector (like "is")
-    Tahole,       // then keyword
-    Nahoy,        // else keyword
-    Othoba,       // or keyword
-    Ebong,        // and keyword
-    ReturnKoro,   // return keyword
-    Dekhao,       // print keyword
-    InputNao,     // input function keyword
-    Shomoy,       // time keyword
+    /// Function declaration keyword
+    Function,
+    /// Immutable variable declaration keyword
+    Dhoro,
+    /// Mutable variable declaration keyword
+    Temp,
+    /// Boolean true literal
+    Ha,
+    /// Boolean false literal
+    Na,
+    /// Conditional if keyword
+    Jodi,
+    /// Condition connector (like "is")
+    Hoy,
+    /// Then keyword for conditionals
+    Tahole,
+    /// Else keyword
+    Nahoy,
+    /// Logical OR keyword
+    Othoba,
+    /// Logical AND keyword
+    Ebong,
+    /// Return statement keyword
+    ReturnKoro,
+    /// Print/output keyword
+    Dekhao,
+    /// Input function keyword
+    InputNao,
+    /// Time keyword
+    Shomoy,
 
     // Comment tokens for single and multi-line comments
+    /// Single line comment marker
     EkLineMontobbo,
+    /// Multi-line comment start marker
     BohuLineMontobboShuru,
+    /// Multi-line comment end marker
     BohuLineMontobboShesh,
 
     // Loop-related keywords
+    /// While loop keyword
     Jotokhon,
+    /// Do-while loop keyword
     AgeKoro,
+    /// For loop keyword
     ErJonno,
+    /// For-each loop keyword
     ProtitarJonno,
+    /// Continue keyword
     Choluk,
+    /// Break keyword
     Thamo,
+    /// Where clause keyword
     Jekhane,
+    /// Iterator keyword
     Protibar,
 
     // Module system
+    /// Import keyword
     ImportKoro,
+    /// Export keyword
     ExportKoro,
+    /// Module declaration keyword
     Module,
-    EiHisebe,     // as (aliasing)
+    /// Alias keyword (as)
+    EiHisebe,
 
     // Exception handling
+    /// Try keyword
     CheshtaKoro,
+    /// Catch keyword
     DhoreFelo,
+    /// Finally keyword
     Oboseshe,
+    /// Throw keyword
     ThrowKoro,
 
     // Type system
+    /// Type definition keyword
     TypeBanao,
+    /// Typeof keyword
     Dhoroner,
-    Kisuna,       // null/none
+    /// Null/none keyword
+    Kisuna,
 
     // Data structures
+    /// List/array keyword
     Talika,
+    /// Arrow operator ->
     Arrow,
+    /// Double colon ::
     DoubleColon,
 
-    // Async
+    // Async programming
+    /// Await keyword
     OpekkhaKoro,
+    /// Async keyword
     ShomoyNiropekho,
-
-    // Reserved / Future use tokens
-    // AttributeStart,
-    // AttributeEnd,
-    // Macro,
 }
 
 impl TokenType {
     /// Returns the category of the token type.
+    /// This is used for classification and parsing logic.
     pub fn category(&self) -> TokenCategory {
         match self {
             TokenType::Illegal => TokenCategory::Illegal,
@@ -201,6 +302,7 @@ impl TokenType {
 
             TokenType::Function 
             | TokenType::Dhoro 
+            | TokenType::Temp
             | TokenType::Ha 
             | TokenType::Na 
             | TokenType::Jodi 
@@ -247,24 +349,31 @@ impl TokenType {
 
             TokenType::OpekkhaKoro 
             | TokenType::ShomoyNiropekho => TokenCategory::Async,
-
-            // Reserved tokens could be added here if enabled later
-            // _ => TokenCategory::Reserved,
         }
     }
 }
 
 /// Struct representing a token, consisting of type, literal, and position info.
+/// This is the fundamental unit of lexical analysis.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Token {
+    /// The type of token (keyword, operator, literal, etc.)
     pub token_type: TokenType,
+    /// The actual text that was tokenized
     pub literal: String,
+    /// Line number in source code (1-indexed)
     pub line: usize,
+    /// Column number in source code (1-indexed)
     pub column: usize,
 }
 
 impl Token {
     /// Constructor to create a new token with given type, literal, and position.
+    /// 
+    /// # Examples
+    /// ```
+    /// let token = Token::new(TokenType::Ident, "variable_name", 1, 5);
+    /// ```
     pub fn new(token_type: TokenType, literal: &str, line: usize, column: usize) -> Self {
         Token {
             token_type,
@@ -275,6 +384,12 @@ impl Token {
     }
 
     /// Creates a string representation of the token, useful for debugging.
+    /// 
+    /// # Examples
+    /// ```
+    /// let token = Token::new(TokenType::Ident, "x", 1, 1);
+    /// println!("{}", token.to_string()); // Outputs: Ident('x') at 1:1
+    /// ```
     pub fn to_string(&self) -> String {
         format!(
             "{}('{}') at {}:{}",
@@ -338,6 +453,7 @@ impl fmt::Display for TokenType {
 
             TokenType::Function => "function",
             TokenType::Dhoro => "dhoro",
+            TokenType::Temp => "temp",
             TokenType::Ha => "ha",
             TokenType::Na => "na",
             TokenType::Jodi => "jodi",
@@ -390,6 +506,13 @@ impl fmt::Display for TokenType {
 }
 
 /// Normalize an input identifier or keyword by converting to lowercase and collapsing whitespace.
+/// This allows flexible keyword recognition regardless of case or spacing variations.
+/// 
+/// # Examples
+/// ```
+/// assert_eq!(normalize_keyword("Mone  Koro"), "mone koro");
+/// assert_eq!(normalize_keyword("JODI"), "jodi");
+/// ```
 fn normalize_keyword(ident: &str) -> String {
     ident
         .to_lowercase()
@@ -400,6 +523,9 @@ fn normalize_keyword(ident: &str) -> String {
 
 /// A map of keyword strings and their synonyms to the canonical TokenType.
 /// This allows multiple natural language variants to map to the same token.
+/// 
+/// The map includes both base keywords and their various synonyms to support
+/// flexible natural language programming in Bengali/Banglish.
 pub static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     let mut map = HashMap::new();
 
@@ -410,6 +536,14 @@ pub static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     map.insert("monekoro", TokenType::Dhoro);
     map.insert("mone kori", TokenType::Dhoro);
     map.insert("mone koro", TokenType::Dhoro);
+
+    // Mutable/Changeable Variable Keywords
+    map.insert("temp", TokenType::Temp);
+    map.insert("temporary", TokenType::Temp);
+    map.insert("changable", TokenType::Temp);
+    map.insert("osthayi", TokenType::Temp);
+    map.insert("mutable", TokenType::Temp);
+    map.insert("mut", TokenType::Temp);
 
     // Function keywords
     map.insert("kaj", TokenType::Function);
@@ -557,7 +691,7 @@ pub static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     map.insert("null", TokenType::Kisuna);
     map.insert("none", TokenType::Kisuna);
 
-    // Async
+    // Async keywords
     map.insert("opekkha", TokenType::OpekkhaKoro);
     map.insert("opekkha koro", TokenType::OpekkhaKoro);
     map.insert("await", TokenType::OpekkhaKoro);
@@ -570,7 +704,17 @@ pub static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
 });
 
 /// Lookup a keyword or identifier and return its token type.
-/// If no keyword match, returns TokenType::Ident.
+/// If no keyword match is found, returns TokenType::Ident.
+/// 
+/// This function first checks for exact matches, then tries normalized variants
+/// with lowercase and collapsed whitespace to support flexible keyword recognition.
+/// 
+/// # Examples
+/// ```
+/// assert_eq!(lookup_ident("dhoro"), TokenType::Dhoro);
+/// assert_eq!(lookup_ident("Dhoro"), TokenType::Dhoro);
+/// assert_eq!(lookup_ident("unknown_var"), TokenType::Ident);
+/// ```
 pub fn lookup_ident(ident: &str) -> TokenType {
     if let Some(&tok_type) = KEYWORDS.get(ident) {
         return tok_type;
@@ -585,7 +729,15 @@ pub fn lookup_ident(ident: &str) -> TokenType {
     TokenType::Ident
 }
 
-/// Helper: checks if token is a literal type
+/// Helper: checks if token is a literal type.
+/// Literals are values that can be directly represented in source code.
+/// 
+/// # Examples
+/// ```
+/// assert!(is_literal(TokenType::Int));
+/// assert!(is_literal(TokenType::String));
+/// assert!(!is_literal(TokenType::Plus));
+/// ```
 pub fn is_literal(token_type: TokenType) -> bool {
     matches!(
         token_type,
@@ -605,7 +757,15 @@ pub fn is_literal(token_type: TokenType) -> bool {
     )
 }
 
-/// Helper: checks if token is an operator
+/// Helper: checks if token is an operator (arithmetic, comparison, or bitwise).
+/// 
+/// # Examples
+/// ```
+/// assert!(is_operator(TokenType::Plus));
+/// assert!(is_operator(TokenType::Eq));
+/// assert!(is_operator(TokenType::Ampersand));
+/// assert!(!is_operator(TokenType::Ident));
+/// ```
 pub fn is_operator(token_type: TokenType) -> bool {
     matches!(
         token_type,
@@ -630,12 +790,22 @@ pub fn is_operator(token_type: TokenType) -> bool {
     )
 }
 
-/// Helper: checks if token is a keyword
+/// Helper: checks if token is a language keyword.
+/// Keywords are reserved words that have special meaning in the B+ language.
+/// 
+/// # Examples
+/// ```
+/// assert!(is_keyword(TokenType::Function));
+/// assert!(is_keyword(TokenType::Jodi));
+/// assert!(is_keyword(TokenType::Temp));
+/// assert!(!is_keyword(TokenType::Ident));
+/// ```
 pub fn is_keyword(token_type: TokenType) -> bool {
     matches!(
         token_type,
         TokenType::Function
             | TokenType::Dhoro
+            | TokenType::Temp
             | TokenType::Ha
             | TokenType::Na
             | TokenType::Jodi
@@ -651,7 +821,15 @@ pub fn is_keyword(token_type: TokenType) -> bool {
     )
 }
 
-/// Helper: checks if token is a loop keyword
+/// Helper: checks if token is a loop control keyword.
+/// 
+/// # Examples
+/// ```
+/// assert!(is_loop(TokenType::Jotokhon));
+/// assert!(is_loop(TokenType::Choluk));
+/// assert!(is_loop(TokenType::Thamo));
+/// assert!(!is_loop(TokenType::Function));
+/// ```
 pub fn is_loop(token_type: TokenType) -> bool {
     matches!(
         token_type,
@@ -666,7 +844,14 @@ pub fn is_loop(token_type: TokenType) -> bool {
     )
 }
 
-/// Helper: checks if token is a comment token
+/// Helper: checks if token is a comment token.
+/// 
+/// # Examples
+/// ```
+/// assert!(is_comment(TokenType::EkLineMontobbo));
+/// assert!(is_comment(TokenType::BohuLineMontobboShuru));
+/// assert!(!is_comment(TokenType::String));
+/// ```
 pub fn is_comment(token_type: TokenType) -> bool {
     matches!(
         token_type,
@@ -676,27 +861,335 @@ pub fn is_comment(token_type: TokenType) -> bool {
     )
 }
 
-/// Helper: checks if token is reserved (currently no reserved tokens enabled)
+/// Helper: checks if token is part of the module system.
+/// 
+/// # Examples
+/// ```
+/// assert!(is_module(TokenType::ImportKoro));
+/// assert!(is_module(TokenType::ExportKoro));
+/// assert!(is_module(TokenType::Module));
+/// assert!(!is_module(TokenType::Function));
+/// ```
+pub fn is_module(token_type: TokenType) -> bool {
+    matches!(
+        token_type,
+        TokenType::ImportKoro
+            | TokenType::ExportKoro
+            | TokenType::Module
+            | TokenType::EiHisebe
+    )
+}
+
+/// Helper: checks if token is part of exception handling.
+/// 
+/// # Examples
+/// ```
+/// assert!(is_exception_handling(TokenType::CheshtaKoro));
+/// assert!(is_exception_handling(TokenType::DhoreFelo));
+/// assert!(is_exception_handling(TokenType::ThrowKoro));
+/// assert!(!is_exception_handling(TokenType::Function));
+/// ```
+pub fn is_exception_handling(token_type: TokenType) -> bool {
+    matches!(
+        token_type,
+        TokenType::CheshtaKoro
+            | TokenType::DhoreFelo
+            | TokenType::Oboseshe
+            | TokenType::ThrowKoro
+    )
+}
+
+/// Helper: checks if token is part of the type system.
+/// 
+/// # Examples
+/// ```
+/// assert!(is_type_system(TokenType::TypeBanao));
+/// assert!(is_type_system(TokenType::Dhoroner));
+/// assert!(is_type_system(TokenType::Kisuna));
+/// assert!(!is_type_system(TokenType::Function));
+/// ```
+pub fn is_type_system(token_type: TokenType) -> bool {
+    matches!(
+        token_type,
+        TokenType::TypeBanao
+            | TokenType::Dhoroner
+            | TokenType::Kisuna
+    )
+}
+
+/// Helper: checks if token is part of data structure syntax.
+/// 
+/// # Examples
+/// ```
+/// assert!(is_data_structure(TokenType::Talika));
+/// assert!(is_data_structure(TokenType::Arrow));
+/// assert!(is_data_structure(TokenType::DoubleColon));
+/// assert!(!is_data_structure(TokenType::Function));
+/// ```
+pub fn is_data_structure(token_type: TokenType) -> bool {
+    matches!(
+        token_type,
+        TokenType::Talika
+            | TokenType::Arrow
+            | TokenType::DoubleColon
+    )
+}
+
+/// Helper: checks if token is part of async programming.
+/// 
+/// # Examples
+/// ```
+/// assert!(is_async(TokenType::OpekkhaKoro));
+/// assert!(is_async(TokenType::ShomoyNiropekho));
+/// assert!(!is_async(TokenType::Function));
+/// ```
+pub fn is_async(token_type: TokenType) -> bool {
+    matches!(
+        token_type,
+        TokenType::OpekkhaKoro
+            | TokenType::ShomoyNiropekho
+    )
+}
+
+/// Helper: checks if token is a delimiter (punctuation).
+/// 
+/// # Examples
+/// ```
+/// assert!(is_delimiter(TokenType::LParen));
+/// assert!(is_delimiter(TokenType::Comma));
+/// assert!(is_delimiter(TokenType::Semicolon));
+/// assert!(!is_delimiter(TokenType::Plus));
+/// ```
+pub fn is_delimiter(token_type: TokenType) -> bool {
+    matches!(
+        token_type,
+        TokenType::Comma
+            | TokenType::Semicolon
+            | TokenType::LParen
+            | TokenType::RParen
+            | TokenType::LBrace
+            | TokenType::RBrace
+            | TokenType::LBracket
+            | TokenType::RBracket
+            | TokenType::Fullstop
+            | TokenType::Colon
+    )
+}
+
+/// Helper: checks if token is a bitwise operator.
+/// 
+/// # Examples
+/// ```
+/// assert!(is_bitwise_operator(TokenType::Ampersand));
+/// assert!(is_bitwise_operator(TokenType::ShiftLeft));
+/// assert!(!is_bitwise_operator(TokenType::Plus));
+/// ```
+pub fn is_bitwise_operator(token_type: TokenType) -> bool {
+    matches!(
+        token_type,
+        TokenType::Ampersand
+            | TokenType::Pipe
+            | TokenType::Caret
+            | TokenType::Tilde
+            | TokenType::ShiftLeft
+            | TokenType::ShiftRight
+    )
+}
+
+/// Helper: checks if token is reserved for future use.
+/// Currently, no reserved tokens are implemented, but this function
+/// is provided for future extensibility.
+/// 
+/// # Examples
+/// ```
+/// assert!(!is_reserved(TokenType::Function)); // Currently no reserved tokens
+/// ```
 pub fn is_reserved(_token_type: TokenType) -> bool {
-    // Uncomment when Reserved tokens are added
-    // matches!(
-    //     token_type,
-    //     TokenType::AttributeStart
-    //         | TokenType::AttributeEnd
-    //         | TokenType::Macro
-    // )
+    // Reserved tokens are not currently implemented
+    // This function is provided for future extensibility
+    // When reserved tokens are added, they should be matched here
     false
 }
 
+/// Helper: checks if a given string is a reserved keyword that cannot be used as an identifier.
+/// This is used during parsing to prevent users from using language keywords as variable names.
+/// 
+/// # Examples
+/// ```
+/// assert!(is_reserved_keyword("jodi"));
+/// assert!(is_reserved_keyword("function"));
+/// assert!(!is_reserved_keyword("myVariable"));
+/// ```
+pub fn is_reserved_keyword(ident: &str) -> bool {
+    let normalized = normalize_keyword(ident);
+    RESERVED_KEYWORDS.contains(&normalized.as_str())
+}
+
+/// List of reserved keywords that cannot be used as variable names or identifiers.
+/// These are the core language keywords that have special meaning and must be protected
+/// from being used as user-defined identifiers.
+/// 
+/// This list includes both the canonical forms and common variants to ensure
+/// comprehensive protection of language keywords.
 pub static RESERVED_KEYWORDS: &[&str] = &[
-    "jodi",
-    "nahoy",
-    "ha",
-    "na",
-    "dhoro",
-    "returnkoro",
-    "dekhao",
-    "inputnao",
-    "function",
-    // ... rest reserved keywords that can't be used as variable names.
+    // Core language keywords
+    "jodi",         // if
+    "tahole",       // then
+    "nahoy",        // else
+    "ha",           // true
+    "na",           // false
+    "dhoro",        // let/variable declaration
+    "temp",         // mutable variable
+    "function",     // function declaration
+    "kaj",          // function (synonym)
+    "fn",           // function (synonym)
+    "return",       // return
+    "returnkoro",   // return (Banglish)
+    "ferot",        // return (synonym)
+    "dekhao",       // print
+    "print",        // print (English)
+    "inputnao",     // input
+    "input",        // input (English)
+    
+    // Boolean literals
+    "true",
+    "false",
+    "thik",         // true (synonym)
+    "mitthe",       // false (synonym)
+    "sotti",        // true (synonym)
+    
+    // Logical operators
+    "ebong",        // and
+    "and",          // and (English)
+    "othoba",       // or
+    "or",           // or (English)
+    "ba",           // or (synonym)
+    
+    // Loop keywords
+    "jotokhon",     // while
+    "age koro",     // do
+    "agekoro",      // do (no space)
+    "er jonno",     // for
+    "erjonno",      // for (no space)
+    "protitar jonno", // for each
+    "choluk",       // continue
+    "thamo",        // break
+    "protibar",     // each iteration
+    
+    // Module system
+    "import",
+    "import koro",
+    "export",
+    "export koro",
+    "module",
+    "as",
+    "ei hisebe",    // as (Banglish)
+    
+    // Exception handling
+    "try",
+    "cheshta koro", // try (Banglish)
+    "catch",
+    "dhore felo",   // catch (Banglish)
+    "finally",
+    "oboseshe",     // finally (Banglish)
+    "throw",
+    "throw koro",   // throw (Banglish)
+    "felo",         // throw (synonym)
+    
+    // Type system
+    "type banao",   // type definition
+    "typeof",
+    "dhoroner",     // typeof (Banglish)
+    "null",
+    "kisuna",       // null (Banglish)
+    "nil",          // null (synonym)
+    "none",         // null (synonym)
+    
+    // Async keywords
+    "async",
+    "await",
+    "opekkha koro", // await (Banglish)
+    "shomoy niropekkho", // async (Banglish)
+    
+    // Time and other utilities
+    "shomoy",       // time
+    "time",         // time (English)
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_token_creation() {
+        let token = Token::new(TokenType::Ident, "variable", 1, 5);
+        assert_eq!(token.token_type, TokenType::Ident);
+        assert_eq!(token.literal, "variable");
+        assert_eq!(token.line, 1);
+        assert_eq!(token.column, 5);
+    }
+
+    #[test]
+    fn test_keyword_lookup() {
+        assert_eq!(lookup_ident("dhoro"), TokenType::Dhoro);
+        assert_eq!(lookup_ident("Dhoro"), TokenType::Dhoro);
+        assert_eq!(lookup_ident("DHORO"), TokenType::Dhoro);
+        assert_eq!(lookup_ident("ha"), TokenType::Ha);
+        assert_eq!(lookup_ident("true"), TokenType::Ha);
+        assert_eq!(lookup_ident("unknown"), TokenType::Ident);
+    }
+
+    #[test]
+    fn test_normalize_keyword() {
+        assert_eq!(normalize_keyword("Dhoro"), "dhoro");
+        assert_eq!(normalize_keyword("JODI"), "jodi");
+        assert_eq!(normalize_keyword("  Ha  "), "ha");
+    }
+
+    #[test]
+    fn test_helper_functions() {
+        assert!(is_literal(TokenType::Int));
+        assert!(is_literal(TokenType::String));
+        assert!(!is_literal(TokenType::Plus));
+
+        assert!(is_operator(TokenType::Plus));
+        assert!(is_operator(TokenType::Eq));
+        assert!(!is_operator(TokenType::Ident));
+
+        assert!(is_keyword(TokenType::Function));
+        assert!(is_keyword(TokenType::Temp));
+        assert!(!is_keyword(TokenType::Ident));
+
+        assert!(is_loop(TokenType::Jotokhon));
+        assert!(is_loop(TokenType::Choluk));
+        assert!(!is_loop(TokenType::Function));
+
+        assert!(is_comment(TokenType::EkLineMontobbo));
+        assert!(!is_comment(TokenType::String));
+    }
+
+    #[test]
+    fn test_token_categories() {
+        assert_eq!(TokenType::Dhoro.category(), TokenCategory::Keyword);
+        assert_eq!(TokenType::Plus.category(), TokenCategory::Operator);
+        assert_eq!(TokenType::Int.category(), TokenCategory::Literal);
+        assert_eq!(TokenType::Jotokhon.category(), TokenCategory::Loop);
+        assert_eq!(TokenType::ImportKoro.category(), TokenCategory::Module);
+    }
+
+    #[test]
+    fn test_reserved_keywords() {
+        assert!(is_reserved_keyword("jodi"));
+        assert!(is_reserved_keyword("function"));
+        assert!(is_reserved_keyword("DHORO"));
+        assert!(!is_reserved_keyword("myVariable"));
+        assert!(!is_reserved_keyword("customName"));
+    }
+
+    #[test]
+    fn test_display_format() {
+        assert_eq!(format!("{}", TokenType::Plus), "+");
+        assert_eq!(format!("{}", TokenType::Dhoro), "dhoro");
+        assert_eq!(format!("{}", TokenType::Arrow), "->");
+    }
+}

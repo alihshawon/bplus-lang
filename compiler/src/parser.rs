@@ -119,32 +119,64 @@ peek_token: Token::new(TokenType::Illegal, "", 0, 0),
         match self.cur_token.token_type {
             TokenType::Dhoro => self.parse_let_statement(),
             TokenType::ReturnKoro => self.parse_return_statement(),
+            TokenType::Ident => {
+                let name = Expression::Identifier(self.cur_token.literal.clone());
+                if self.peek_token_is(TokenType::Assign) {
+                    self.parse_assign_statement(name)
+                } else {
+                    self.parse_expression_statement()
+                }
+            }
             _ => self.parse_expression_statement(),
         }
     }
 
+
     // Parse a let statement
-    fn parse_let_statement(&mut self) -> Option<Statement> {
-        if !self.expect_peek(TokenType::Ident) {
-            return None;
+fn parse_let_statement(&mut self) -> Option<Statement> {
+    let mut mutable = true; // Default to mutable
+
+    if self.peek_token_is(TokenType::Dhoro) || self.peek_token_is(TokenType::Dhoro) {
+        // Check for 'temp' keyword to make it immutable
+        if self.peek_token_is(TokenType::Temp) {
+            self.next_token(); // Consume the 'temp' token
+            mutable = false;   // Set mutable flag to false
         }
-
-        let name = Expression::Identifier(self.cur_token.literal.clone());
-
-        if !self.expect_peek(TokenType::Assign) {
-            return None;
-        }
-
-        self.next_token();
-
-        let value = self.parse_expression(Precedence::LOWEST)?;
-
-        if self.peek_token_is(TokenType::Semicolon) {
-            self.next_token();
-        }
-
-        Some(Statement::Let { name, value })
     }
+
+    if !self.expect_peek(TokenType::Ident) { return None; }
+
+    let name = Expression::Identifier(self.cur_token.literal.clone());
+
+    if !self.expect_peek(TokenType::Assign) { return None; }
+
+    self.next_token(); // Consume the '=' token
+    let value = self.parse_expression(Precedence::LOWEST)?;
+
+    if mutable && self.peek_token_is(TokenType::Semicolon) {
+        self.next_token(); // Consume the semicolon for a mutable variable
+    } else if !mutable && self.peek_token_is(TokenType::Semicolon) {
+        self.next_token(); // Skip the semicolon for an immutable variable
+    } else if mutable || !mutable {
+        // If not all tokens are consumed, it might be an error in syntax
+        self.errors.push("missing ';' after declaration".to_string());
+        return None;
+    }
+
+    Some(Statement::Let { name, value, mutable })
+}
+
+
+    // Asign statement
+    fn parse_assign_statement(&mut self, name: Expression) -> Option<Statement> {
+        if !self.expect_peek(TokenType::Assign) { return None; }
+        self.next_token();
+        let value = self.parse_expression(Precedence::LOWEST)?;
+        if self.peek_token_is(TokenType::Semicolon) { self.next_token(); }
+        Some(Statement::Assign { name, value })
+    }
+
+
 
     // Parse a return statement
     fn parse_return_statement(&mut self) -> Option<Statement> {

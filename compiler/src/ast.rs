@@ -15,7 +15,15 @@ pub enum Statement {
     Let {
         name: Expression,  // Variable name as Expression::Identifier
         value: Expression, // Right-hand side expression
+        mutable: bool, // Mutable flag
     },
+
+    Assign { 
+        name: Expression, 
+        value: Expression 
+    },
+    
+    Expression(Expression),
 
     // Return statement: return <value>;
     Return {
@@ -63,8 +71,14 @@ pub enum Statement {
 impl fmt::Display for Statement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Statement::Let { name, value } =>
-                write!(f, "let {} = {};", name, value),
+            Statement::Let { name, value, mutable } =>
+                if *mutable {
+                        write!(f, "dhoro {} = {};", name, value)
+                    } else {
+                        write!(f, "let {} = {};", name, value)
+                    },
+            Statement::Assign { name, value } =>
+                write!(f, "{} = {};", name, value),
 
             Statement::Return { return_value } =>
                 write!(f, "return {};", return_value),
@@ -117,6 +131,9 @@ impl fmt::Display for Statement {
 
             Statement::Continue =>
                 write!(f, "choluk;"),
+
+            Statement::Expression(expr) =>
+                write!(f, "{}", expr),
         }
     }
 }
@@ -158,6 +175,10 @@ pub enum Expression {
     Call {
         function: Box<Expression>,
         arguments: Vec<Expression>,
+    },
+
+    TemplateLiteral {
+        parts: Vec<Expression>,
     },
 }
 
@@ -223,6 +244,13 @@ impl fmt::Display for Expression {
                 let args: Vec<String> = arguments.iter().map(|a| format!("{}", a)).collect();
                 write!(f, "{}({})", function, args.join(", "))
             }
+
+            Expression::TemplateLiteral { parts } => {
+                let rendered: Vec<String> = parts.iter().map(|p| format!("{}", p)).collect();
+                // backticks style
+                write!(f, "`{}`", rendered.join(""))
+            }
+           
         }
     }
 }
