@@ -52,12 +52,16 @@ fn eval_statement(statement: Statement, env: &mut Environment) -> Object {
             }
 
             if let Expression::Identifier(ident_name) = name {
-                env.set(ident_name.clone(), val.clone(), true); // true = mutable
-                val
+                match env.assign(ident_name.clone(), val.clone()) {
+                    Ok(_) => val,  // Return evaluated value
+                    Err(e) => Object::Error(e),
+                }
             } else {
                 Object::Error("invalid assignment target".to_string())
             }
-        },
+        }
+
+
 
         
         Statement::Expression(expr) => eval_expression(expr, env),

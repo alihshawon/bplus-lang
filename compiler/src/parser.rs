@@ -115,21 +115,24 @@ peek_token: Token::new(TokenType::Illegal, "", 0, 0),
     }
 
     // Parse a statement depending on current token type
-    fn parse_statement(&mut self) -> Option<Statement> {
-        match self.cur_token.token_type {
-            TokenType::Dhoro => self.parse_let_statement(),
-            TokenType::ReturnKoro => self.parse_return_statement(),
-            TokenType::Ident => {
+fn parse_statement(&mut self) -> Option<Statement> {
+    match self.cur_token.token_type {
+        TokenType::Dhoro => self.parse_let_statement(),
+        TokenType::ReturnKoro => self.parse_return_statement(),
+        TokenType::Ident => {
+            // Check if next token is '='
+            if self.peek_token_is(TokenType::Assign) {
                 let name = Expression::Identifier(self.cur_token.literal.clone());
-                if self.peek_token_is(TokenType::Assign) {
-                    self.parse_assign_statement(name)
-                } else {
-                    self.parse_expression_statement()
-                }
+                self.parse_assign_statement(name)
+            } else {
+                self.parse_expression_statement()
             }
-            _ => self.parse_expression_statement(),
         }
+        _ => self.parse_expression_statement(),
     }
+}
+
+
 
 
     // Parse a let statement
@@ -168,13 +171,17 @@ fn parse_let_statement(&mut self) -> Option<Statement> {
 
 
     // Asign statement
-    fn parse_assign_statement(&mut self, name: Expression) -> Option<Statement> {
-        if !self.expect_peek(TokenType::Assign) { return None; }
+fn parse_assign_statement(&mut self, name: Expression) -> Option<Statement> {
+    if !self.expect_peek(TokenType::Assign) { return None; }
+    self.next_token(); // move to right-hand side expression
+    let value = self.parse_expression(Precedence::LOWEST)?;
+    if self.peek_token_is(TokenType::Semicolon) {
         self.next_token();
-        let value = self.parse_expression(Precedence::LOWEST)?;
-        if self.peek_token_is(TokenType::Semicolon) { self.next_token(); }
-        Some(Statement::Assign { name, value })
     }
+    Some(Statement::Assign { name, value })
+}
+
+
 
 
 
