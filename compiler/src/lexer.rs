@@ -420,3 +420,4 @@ _ if self.ch.is_ascii_alphabetic() || self.ch == b'_' || self.is_unicode_bengali
         }
     }
 }
+

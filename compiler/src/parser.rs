@@ -119,6 +119,11 @@ fn parse_statement(&mut self) -> Option<Statement> {
     match self.cur_token.token_type {
         TokenType::Dhoro => self.parse_let_statement(),
         TokenType::ReturnKoro => self.parse_return_statement(),
+        TokenType::Dekhao => {
+            // Handle dekhao as expression statement
+            let expr = self.parse_expression_statement()?;
+            Some(expr)
+        }
         TokenType::Ident => {
             // Check if next token is '='
             if self.peek_token_is(TokenType::Assign) {
@@ -171,15 +176,15 @@ fn parse_let_statement(&mut self) -> Option<Statement> {
 
 
     // Asign statement
-fn parse_assign_statement(&mut self, name: Expression) -> Option<Statement> {
-    if !self.expect_peek(TokenType::Assign) { return None; }
-    self.next_token(); // move to right-hand side expression
-    let value = self.parse_expression(Precedence::LOWEST)?;
-    if self.peek_token_is(TokenType::Semicolon) {
-        self.next_token();
+    fn parse_assign_statement(&mut self, name: Expression) -> Option<Statement> {
+        if !self.expect_peek(TokenType::Assign) { return None; }
+        self.next_token(); // move to right-hand side expression
+        let value = self.parse_expression(Precedence::LOWEST)?;
+        if self.peek_token_is(TokenType::Semicolon) {
+            self.next_token();
+        }
+        Some(Statement::Assign { name, value })
     }
-    Some(Statement::Assign { name, value })
-}
 
 
 
@@ -265,67 +270,154 @@ fn parse_assign_statement(&mut self, name: Expression) -> Option<Statement> {
 
     // Parse print (dekhao) expression
 
-    fn parse_print_expression(&mut self) -> Option<Expression> {
-        self.next_token(); // consume 'dekhao'
+// compiler/src/parser.rs
 
-        // Check the next token to decide what kind of expression we are parsing
-        let expr = match self.cur_token.token_type {
-            TokenType::LParen => {
-                // dekhao(expr) or dekhao (expr)
-                let e = self.parse_grouped_expression()?;
-                e
-            }
-            TokenType::LBrace => {
-                // dekhao { ... }  -> template literal
-                let template_tokens = self.parse_template_literal()?;
-                Expression::TemplateLiteral { parts: template_tokens }
-            }
-            TokenType::String | TokenType::Int | TokenType::Ident | TokenType::Minus | TokenType::Bang => {
-                // bare expression or string literal
-                self.parse_expression(Precedence::LOWEST)?
-            }
-            _ => {
-                // fallback: treat it as bare expression
-                self.parse_expression(Precedence::LOWEST)?
-            }
-        };
+fn parse_print_expression(&mut self) -> Option<Expression> {
+    // Store the current position for potential rollback
+    let dekhao_token = self.cur_token.clone();
+    
+    // Move past 'dekhao'
+    self.next_token();
+    
+    let mut args = vec![];
 
-        Some(Expression::Call {
+    // Case 1: dekhao { template literal }
+    if self.cur_token.token_type == TokenType::LBrace {
+        let template_parts = self.parse_template_literal()?;
+        return Some(Expression::Call {
             function: Box::new(Expression::Identifier("dekhao".to_string())),
-            arguments: vec![expr],
-        })
+            arguments: vec![Expression::TemplateLiteral { parts: template_parts }],
+        });
     }
-
-    // New helper function to parse template literals like dekhao {(name) is (status)}
-    fn parse_template_literal(&mut self) -> Option<Vec<Expression>> {
-        let mut parts = Vec::new();
-        self.next_token(); // consume '{'
-
-        while !self.cur_token_is(TokenType::RBrace) && !self.cur_token_is(TokenType::Eof) {
-            match self.cur_token.token_type {
-                TokenType::LParen => {
-                    // expression inside parentheses
-                    self.next_token();
-                    let expr = self.parse_expression(Precedence::LOWEST)?;
-                    if !self.expect_peek(TokenType::RParen) {
-                        return None;
-                    }
-                    parts.push(expr);
-                }
-                TokenType::Ident | TokenType::String | TokenType::Int => {
-                    // literal text outside parentheses
-                    parts.push(Expression::StringLiteral(self.cur_token.literal.clone()));
-                }
-                _ => {}
+    
+    // Case 2: dekhao(args) or dekhao (args)
+    else if self.cur_token.token_type == TokenType::LParen {
+        self.next_token(); // consume '('
+        
+        // Parse arguments inside parentheses
+        while self.cur_token.token_type != TokenType::RParen && self.cur_token.token_type != TokenType::Eof {
+            if let Some(arg) = self.parse_expression(Precedence::LOWEST) {
+                args.push(arg);
+            } else {
+                return None;
             }
-            self.next_token();
+
+            if self.cur_token.token_type == TokenType::Comma {
+                self.next_token();
+            } else {
+                break;
+            }
         }
 
-        Some(parts)
+        if self.cur_token.token_type != TokenType::RParen {
+            self.errors.push("Expected ')' after dekhao arguments".to_string());
+            return None;
+        }
+        self.next_token(); // consume ')'
+    }
+    
+    // Case 3: dekhao "string" or dekhao"string" (direct expression)
+    else if self.cur_token.token_type != TokenType::Semicolon && 
+            self.cur_token.token_type != TokenType::Eof &&
+            self.cur_token.token_type != TokenType::RBrace {
+        
+        // Parse a single expression (string literal, variable, etc.)
+        if let Some(expr) = self.parse_expression(Precedence::LOWEST) {
+            args.push(expr);
+        } else {
+            return None;
+        }
     }
 
+    Some(Expression::Call {
+        function: Box::new(Expression::Identifier("dekhao".to_string())),
+        arguments: args,
+    })
+}
 
+// Improved helper: parse template literals like
+// dekhao { Hi (name), your age is (age) }
+// Preserves spaces and punctuation between placeholders.
+fn parse_template_literal(&mut self) -> Option<Vec<Expression>> {
+    if !self.cur_token_is(TokenType::LBrace) {
+        return None;
+    }
+    
+    self.next_token(); // consume '{'
+    let mut parts: Vec<Expression> = Vec::new();
+    let mut current_text = String::new();
 
+    let mut flush_text = |text: &mut String, parts: &mut Vec<Expression>| {
+        if !text.is_empty() {
+            parts.push(Expression::StringLiteral(text.clone()));
+            text.clear();
+        }
+    };
+
+    while !self.cur_token_is(TokenType::RBrace) && !self.cur_token_is(TokenType::Eof) {
+        match self.cur_token.token_type {
+            TokenType::LParen => {
+                // Flush any accumulated text
+                flush_text(&mut current_text, &mut parts);
+                
+                // Parse expression inside parentheses
+                self.next_token(); // consume '('
+                if let Some(expr) = self.parse_expression(Precedence::LOWEST) {
+                    parts.push(expr);
+                }
+                
+                if !self.expect_peek(TokenType::RParen) {
+                    self.errors.push("Expected ')' in template literal".to_string());
+                    return None;
+                }
+            }
+            
+            TokenType::Ident => {
+                // Add space before identifier if needed
+                if !current_text.is_empty() && 
+                   !current_text.chars().last().unwrap_or(' ').is_whitespace() {
+                    current_text.push(' ');
+                }
+                current_text.push_str(&self.cur_token.literal);
+            }
+            
+            TokenType::String => {
+                current_text.push_str(&self.cur_token.literal);
+            }
+            
+            TokenType::Int => {
+                current_text.push_str(&self.cur_token.literal);
+            }
+            
+            // Handle punctuation and spacing
+            TokenType::Comma => {
+                current_text.push(',');
+                current_text.push(' ');
+            }
+            
+            TokenType::Fullstop => {
+                current_text.push('.');
+            }
+            
+            _ => {
+                // For any other token, just add its literal
+                current_text.push_str(&self.cur_token.literal);
+            }
+        }
+
+        self.next_token();
+    }
+
+    // Flush any remaining text
+    flush_text(&mut current_text, &mut parts);
+
+    if !self.cur_token_is(TokenType::RBrace) {
+        self.errors.push("Expected '}' to close template literal".to_string());
+        return None;
+    }
+
+    Some(parts)
+}
 
 
     // Parse grouped expression like (expr)
