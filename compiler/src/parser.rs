@@ -272,6 +272,170 @@ fn parse_let_statement(&mut self) -> Option<Statement> {
 
 // compiler/src/parser.rs
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+fn parse_print_expression(&mut self) -> Option<Expression> {
+    let dekhao_token = self.cur_token.clone();
+    
+    // Move past 'dekhao'
+    self.next_token();
+    
+    let mut args = vec![];
+
+    // Handle template literal cases: dekhao{...} and dekhao {...}
+    if self.cur_token.token_type == TokenType::LBrace {
+        let template_parts = self.parse_template_literal()?;
+        return Some(Expression::Call {
+            function: Box::new(Expression::Identifier("dekhao".to_string())),
+            arguments: vec![Expression::TemplateLiteral { parts: template_parts }],
+        });
+    }
+    
+    // Handle parentheses cases: dekhao(...) and dekhao (...)
+    if self.cur_token.token_type == TokenType::LParen {
+        self.next_token(); // consume '('
+        
+        // Parse arguments inside parentheses
+        while self.cur_token.token_type != TokenType::RParen && self.cur_token.token_type != TokenType::Eof {
+            if let Some(arg) = self.parse_expression(Precedence::LOWEST) {
+                args.push(arg);
+            } else {
+                return None;
+            }
+
+            if self.cur_token.token_type == TokenType::Comma {
+                self.next_token();
+            } else {
+                break;
+            }
+        }
+
+        if self.cur_token.token_type != TokenType::RParen {
+            self.errors.push("Expected ')' after dekhao arguments".to_string());
+            return None;
+        }
+        self.next_token(); // consume ')'
+    } else {
+        // Handle direct string cases: dekhao"text" and dekhao "text"
+        // Parse until semicolon or end of line
+        while self.cur_token.token_type != TokenType::Semicolon && 
+              self.cur_token.token_type != TokenType::Eof &&
+              self.cur_token.token_type != TokenType::RBrace {
+            
+            if let Some(expr) = self.parse_expression(Precedence::LOWEST) {
+                args.push(expr);
+            } else {
+                return None;
+            }
+
+            // Allow comma separation for multiple arguments
+            if self.cur_token.token_type == TokenType::Comma {
+                self.next_token();
+            } else {
+                break;
+            }
+        }
+    }
+
+    Some(Expression::Call {
+        function: Box::new(Expression::Identifier("dekhao".to_string())),
+        arguments: args,
+    })
+}
+
+fn parse_template_literal(&mut self) -> Option<Vec<Expression>> {
+    if !self.cur_token_is(TokenType::LBrace) {
+        return None;
+    }
+    
+    self.next_token(); // consume '{'
+    let mut parts: Vec<Expression> = Vec::new();
+    let mut current_text = String::new();
+
+    let mut flush_text = |text: &mut String, parts: &mut Vec<Expression>| {
+        if !text.is_empty() {
+            parts.push(Expression::StringLiteral(text.clone()));
+            text.clear();
+        }
+    };
+
+    while !self.cur_token_is(TokenType::RBrace) && !self.cur_token_is(TokenType::Eof) {
+        match self.cur_token.token_type {
+            TokenType::LParen => {
+                // Flush any accumulated text
+                flush_text(&mut current_text, &mut parts);
+                
+                // Parse expression inside parentheses
+                self.next_token(); // consume '('
+                if let Some(expr) = self.parse_expression(Precedence::LOWEST) {
+                    parts.push(expr);
+                }
+                
+                if !self.expect_peek(TokenType::RParen) {
+                    self.errors.push("Expected ')' in template literal".to_string());
+                    return None;
+                }
+            }
+            
+            TokenType::Ident => {
+                // Add space before identifier if needed
+                if !current_text.is_empty() && 
+                   !current_text.chars().last().unwrap_or(' ').is_whitespace() {
+                    current_text.push(' ');
+                }
+                current_text.push_str(&self.cur_token.literal);
+            }
+            
+            TokenType::String => {
+                current_text.push_str(&self.cur_token.literal);
+            }
+            
+            TokenType::Int => {
+                current_text.push_str(&self.cur_token.literal);
+            }
+            
+            // Handle punctuation and spacing
+            TokenType::Comma => {
+                current_text.push_str(", ");
+            }
+            
+            TokenType::Fullstop => {
+                current_text.push('.');
+            }
+            
+            _ => {
+                // For any other token, just add its literal
+                current_text.push_str(&self.cur_token.literal);
+            }
+        }
+
+        self.next_token();
+    }
+
+    // Flush any remaining text
+    flush_text(&mut current_text, &mut parts);
+
+    if !self.cur_token_is(TokenType::RBrace) {
+        self.errors.push("Expected '}' to close template literal".to_string());
+        return None;
+    }
+
+    Some(parts)
+}
+
+
+/**
 fn parse_print_expression(&mut self) -> Option<Expression> {
     // Store the current position for potential rollback
     let dekhao_token = self.cur_token.clone();
@@ -418,7 +582,7 @@ fn parse_template_literal(&mut self) -> Option<Vec<Expression>> {
 
     Some(parts)
 }
-
+*/
 
     // Parse grouped expression like (expr)
     fn parse_grouped_expression(&mut self) -> Option<Expression> {
