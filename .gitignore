@@ -5,5 +5,4 @@ compiler/target-*
 # Local Assistant folder
 .continue/
 ai/
-.bplus/
 
