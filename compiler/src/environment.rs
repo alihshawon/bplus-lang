@@ -116,9 +116,12 @@ impl Environment {
                 Err(format!("Cannot assign to immutable variable '{}'", name))
             }
         } else {
-            Err(format!("Variable '{}' not found", name))
+            // Auto-declare on first assignment as immutable by default
+            self.store.insert(name, Variable { value, mutable: false });
+            Ok(())
         }
     }
+
 
     // === FUNCTION: has_builtin ===
     // Checks whether a builtin or variable exists in the current environment

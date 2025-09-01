@@ -436,68 +436,6 @@ fn parse_template_literal(&mut self) -> Option<Vec<Expression>> {
 
 
 /**
-fn parse_print_expression(&mut self) -> Option<Expression> {
-    // Store the current position for potential rollback
-    let dekhao_token = self.cur_token.clone();
-    
-    // Move past 'dekhao'
-    self.next_token();
-    
-    let mut args = vec![];
-
-    // Case 1: dekhao { template literal }
-    if self.cur_token.token_type == TokenType::LBrace {
-        let template_parts = self.parse_template_literal()?;
-        return Some(Expression::Call {
-            function: Box::new(Expression::Identifier("dekhao".to_string())),
-            arguments: vec![Expression::TemplateLiteral { parts: template_parts }],
-        });
-    }
-    
-    // Case 2: dekhao(args) or dekhao (args)
-    else if self.cur_token.token_type == TokenType::LParen {
-        self.next_token(); // consume '('
-        
-        // Parse arguments inside parentheses
-        while self.cur_token.token_type != TokenType::RParen && self.cur_token.token_type != TokenType::Eof {
-            if let Some(arg) = self.parse_expression(Precedence::LOWEST) {
-                args.push(arg);
-            } else {
-                return None;
-            }
-
-            if self.cur_token.token_type == TokenType::Comma {
-                self.next_token();
-            } else {
-                break;
-            }
-        }
-
-        if self.cur_token.token_type != TokenType::RParen {
-            self.errors.push("Expected ')' after dekhao arguments".to_string());
-            return None;
-        }
-        self.next_token(); // consume ')'
-    }
-    
-    // Case 3: dekhao "string" or dekhao"string" (direct expression)
-    else if self.cur_token.token_type != TokenType::Semicolon && 
-            self.cur_token.token_type != TokenType::Eof &&
-            self.cur_token.token_type != TokenType::RBrace {
-        
-        // Parse a single expression (string literal, variable, etc.)
-        if let Some(expr) = self.parse_expression(Precedence::LOWEST) {
-            args.push(expr);
-        } else {
-            return None;
-        }
-    }
-
-    Some(Expression::Call {
-        function: Box::new(Expression::Identifier("dekhao".to_string())),
-        arguments: args,
-    })
-}
 
 // Improved helper: parse template literals like
 // dekhao { Hi (name), your age is (age) }

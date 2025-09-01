@@ -540,10 +540,11 @@ pub static KEYWORDS: Lazy<HashMap<&'static str, TokenType>> = Lazy::new(|| {
     // Mutable/Changeable Variable Keywords
     map.insert("temp", TokenType::Temp);
     map.insert("temporary", TokenType::Temp);
-    map.insert("changable", TokenType::Temp);
+    map.insert("changeable", TokenType::Temp);
     map.insert("osthayi", TokenType::Temp);
     map.insert("mutable", TokenType::Temp);
     map.insert("mut", TokenType::Temp);
+    map.insert("poribortonshil", TokenType::Temp);
 
     // Function keywords
     map.insert("kaj", TokenType::Function);
